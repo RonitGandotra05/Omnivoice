@@ -1,109 +1,75 @@
-"""
-Agent API – Process customer queries through the agent pipeline.
-"""
-
-from fastapi import APIRouter, Depends
+"""Voice agent configuration, offline preview, and explicitly enabled operator calls."""
+import logging
+import re
+import uuid
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy import select
 from app.config.database import get_db
-from app.models.schemas import QueryRequest, QueryResponse
-from app.agents.orchestrator import process_query, get_greeting
+from app.config.settings import get_settings
+from app.models.models import Company, TrialSession
+from app.models.schemas import QueryRequest, TryForFreeRequest, SimulationRequest
+from app.utils.elevenlabs_client import initiate_trial_call
+from app.utils.simulation import simulate
+from app.utils.access import require_operator
 
 router = APIRouter()
-
-
-@router.post("/process", response_model=QueryResponse)
-async def process(body: QueryRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Process a customer query end-to-end.
-    Called by Twilio webhook handler or test UI.
-    """
-    result = await process_query(
-        query_text=body.query,
-        twilio_number=body.twilio_number,
-        customer_phone=body.customer_phone,
-        db=db,
-        conversation_history=body.conversation_history,
-        action_data=body.action_data,
-    )
-
-    return QueryResponse(
-        response=result["response"],
-        refined_query=result.get("refinedQuery"),
-        intent=result.get("intent", "unknown"),
-        action_type=result.get("actionType"),
-        action_data=result.get("actionData", {}),
-        is_action_complete=result.get("isActionComplete", False),
-        interaction_id=result.get("interactionId"),
-        company_name=result.get("companyName"),
-        errors=result.get("errors", []),
-    )
-
-
-@router.get("/greeting")
-async def greeting(twilio_number: str, db: AsyncSession = Depends(get_db)):
-    """Get the company greeting for a Twilio number."""
-    text = await get_greeting(twilio_number, db)
-    return {"greeting": text}
-
-
-import uuid
-import logging
-from fastapi import HTTPException
-from app.models.models import Company
-from app.models.schemas import TryForFreeRequest
-from app.utils.twilio_client import initiate_outbound_call
-from app.utils.embeddings import index_text
-from app.utils.company_config import invalidate_cache
-
 logger = logging.getLogger(__name__)
 
-@router.post("/try-for-free")
-async def try_for_free(body: TryForFreeRequest, db: AsyncSession = Depends(get_db)):
-    """
-    1. Create a temporary company.
-    2. Embed the provided knowledge text into Pinecone mapped to that company.
-    3. Trigger a Twilio outbound call to the provided phone number.
-    """
-    temp_company_id = uuid.uuid4()
-    
-    # Create temporary company record
-    company = Company(
-        id=temp_company_id,
-        name=f"Demo-{temp_company_id.hex[:6]}",
-        slug=f"demo-{temp_company_id.hex[:6]}",
-        phone_number=None, # Only inbound uses this mapping
-        greeting="Hi there! I am your custom OmniVoice Labs agent. How can I help you regarding the policy you provided?",
-        is_active=True
-    )
-    db.add(company)
-    await db.commit()
-    
-    # Ingest text into Pinecone (blocks until complete to ensure agent has data)
+
+@router.get('/status')
+async def status():
+    settings = get_settings()
+    return {"provider": "ElevenLabs Agents", "configured": bool(settings.elevenlabs_api_key and settings.elevenlabs_agent_id),
+        "phone_configured": bool(settings.elevenlabs_phone_number_id),
+        "live_calls_enabled": settings.live_calls_enabled,
+        "simulation_available": True, "inbound": "Use ElevenLabs native Twilio integration"}
+
+
+@router.post('/simulate')
+async def simulation(body: SimulationRequest):
+    return simulate(body)
+
+
+@router.post('/process', status_code=410)
+async def process(body: QueryRequest):
+    raise HTTPException(410, 'Local text orchestration was retired. Use /api/agent/simulate for offline previews or ElevenLabs for voice.')
+
+
+@router.get('/greeting', dependencies=[Depends(require_operator)])
+async def greeting(twilio_number: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Company).where(Company.phone_number == twilio_number))
+    company = result.scalar_one_or_none()
+    return {"greeting": company.greeting if company and company.greeting else 'Hello, how can I help today?'}
+
+
+@router.post('/try-for-free', dependencies=[Depends(require_operator)])
+async def trial(body: TryForFreeRequest, db: AsyncSession = Depends(get_db)):
+    settings = get_settings()
+    if not settings.live_calls_enabled:
+        raise HTTPException(403, 'Live calls are disabled. Use the offline simulator.')
+    if not re.fullmatch(r'\+[1-9]\d{6,14}', body.phone_number):
+        raise HTTPException(422, 'A live call requires an E.164 phone number beginning with +.')
+    if not (settings.elevenlabs_api_key and settings.elevenlabs_agent_id and settings.elevenlabs_phone_number_id):
+        raise HTTPException(503, 'Configure ElevenLabs credentials, agent and imported phone number first.')
+    session = TrialSession(id=uuid.uuid4(), company_name=body.company_name, agent_type=body.agent_type.value,
+        phone_number=body.phone_number, company_context=body.company_context,
+        special_instructions=body.special_instructions, status='queued')
+    db.add(session)
+    await db.flush()
     try:
-        await index_text(
-            company_id=str(temp_company_id),
-            text=body.knowledge_text,
-            metadata={"source": "try-for-free"}
-        )
-    except Exception as e:
-        logger.error(f"Failed to index demo text: {e}")
-        raise HTTPException(status_code=500, detail="Failed to build agent knowledge base.")
-
-    # Invalidate cache just in case
-    invalidate_cache(str(temp_company_id))
-
-    # Initiate Call
-    call_sid = initiate_outbound_call(
-        to_phone=body.phone_number,
-        company_id=str(temp_company_id)
-    )
-
-    if not call_sid:
-        raise HTTPException(status_code=500, detail="Failed to initiate call with Twilio. Verify billing and credentials.")
-
-    return {
-        "status": "success",
-        "company_id": str(temp_company_id),
-        "call_sid": call_sid
-    }
+        result = await initiate_trial_call(**body.model_dump())
+        if result.get('success') is False:
+            raise RuntimeError('Provider declined the call.')
+    except RuntimeError as exc:
+        session.status = 'failed'
+        session.response_payload = {"error": 'Provider call initiation failed'}
+        await db.commit()
+        raise HTTPException(502, str(exc)) from exc
+    session.status = 'initiated'
+    session.external_call_id = result.get('callSid') or result.get('call_id')
+    session.external_conversation_id = result.get('conversation_id') or result.get('conversationId')
+    session.response_payload = result
+    await db.commit()
+    return {"status": "initiated", "trial_session_id": str(session.id),
+        "call_id": session.external_call_id, "conversation_id": session.external_conversation_id}

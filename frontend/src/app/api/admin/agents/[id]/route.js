@@ -1,20 +1,20 @@
-import { NextResponse } from 'next/server';
-import { verifyToken } from '@/utils/auth';
-import { pool } from '@/utils/db';
+import { NextResponse } from "next/server";
+import { verifyToken } from "@/utils/auth";
+import { pool } from "@/utils/db";
 
 export async function GET(request, { params }) {
   try {
-    const token = request.headers.get('Authorization')?.split(' ')[1];
+    const token = request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const client = await pool.connect();
     try {
       const result = await client.query(
@@ -29,11 +29,11 @@ export async function GET(request, { params }) {
         FROM agents
         WHERE agent_id = $1
       `,
-        [id]
+        [id],
       );
 
       if (result.rows.length === 0) {
-        return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+        return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
 
       return NextResponse.json(result.rows[0]);
@@ -41,10 +41,10 @@ export async function GET(request, { params }) {
       client.release();
     }
   } catch (error) {
-    console.error('Error fetching agent details:', error);
+    console.error("Error fetching agent details:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch agent details' },
-      { status: 500 }
+      { error: "Failed to fetch agent details" },
+      { status: 500 },
     );
   }
-} 
+}

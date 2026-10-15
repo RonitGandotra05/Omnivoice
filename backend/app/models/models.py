@@ -143,6 +143,23 @@ class CallLog(Base):
     ended_at = Column(DateTime(timezone=True))
 
 
+class TrialSession(Base):
+    __tablename__ = "trial_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_name = Column(String(255), nullable=False)
+    agent_type = Column(String(50), nullable=False)
+    phone_number = Column(String(20), nullable=False)
+    company_context = Column(Text, nullable=False)
+    special_instructions = Column(Text)
+    status = Column(String(50), default="pending")
+    external_call_id = Column(String(100))
+    external_conversation_id = Column(String(100))
+    response_payload = Column(JSON, default={})
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class ApiKey(Base):
     __tablename__ = "api_keys"
 

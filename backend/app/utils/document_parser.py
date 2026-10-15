@@ -91,6 +91,8 @@ def _parse_docx(buffer: bytes, filename: str) -> dict:
         raise RuntimeError("python-docx not installed – cannot parse DOCX")
     doc = docx.Document(BytesIO(buffer))
     paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    for table in doc.tables:
+        paragraphs.extend(" | ".join(cell.text for cell in row.cells) for row in table.rows)
     return {
         "content": _clean("\n\n".join(paragraphs)),
         "metadata": {"filename": filename, "paragraphs": len(paragraphs)},

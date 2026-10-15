@@ -121,15 +121,6 @@ async def health(detailed: bool = False):
             result["database"] = f"error: {db_err}"
             result["status"] = "degraded"
 
-        # Check Pinecone availability
-        try:
-            from app.utils.embeddings import _get_pinecone_index
-
-            idx = _get_pinecone_index()
-            result["pinecone"] = "connected" if idx else "not configured"
-        except Exception as pc_err:
-            result["pinecone"] = f"error: {pc_err}"
-
     return result
 
 
@@ -142,3 +133,8 @@ app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 app.include_router(twilio.router, prefix="/api/twilio", tags=["twilio"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
+
+from app.support.api import router as support_router
+app.include_router(support_router, prefix="/api/support", tags=["support"])
+from app.support.voice import router as voice_router
+app.include_router(voice_router, prefix="/api/support", tags=["voice"])

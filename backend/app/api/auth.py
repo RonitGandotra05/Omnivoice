@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from jose import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.utils.access import require_operator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -9,7 +10,7 @@ from app.config.settings import get_settings
 from app.models.models import User
 from app.models.schemas import SSOLoginRequest, TokenResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_operator)])
 settings = get_settings()
 
 
@@ -67,7 +68,7 @@ async def sso_login(request: SSOLoginRequest, db: AsyncSession = Depends(get_db)
     # 4. Generate JWT
     access_token_expires = timedelta(minutes=settings.jwt_expiry_minutes)
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email, "role": "admin"},
+        data={"sub": str(user.id), "email": user.email, "role": "user"},
         expires_delta=access_token_expires
     )
 

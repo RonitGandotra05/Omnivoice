@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="580" viewBox="0 0 1280 580" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">OmniVoice — Your company. Every call. Understood.</title>
+  <desc id="desc">An editorial cover in warm paper, charcoal, and burnt orange, with a voice waveform and a company support workflow.</desc>
+  <rect width="1280" height="580" rx="28" fill="#EEEDE9"/>
+  <rect x="24" y="24" width="1232" height="532" rx="22" stroke="#CCCEC6"/>
+  <circle cx="76" cy="78" r="23" fill="#C7470B"/>
+  <g stroke="#FAFAF7" stroke-width="3" stroke-linecap="round"><path d="M65 73v10M72 66v24M80 70v16M87 74v8"/></g>
+  <text x="111" y="87" fill="#242722" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" letter-spacing="-1.5">omnivoice</text>
+  <text x="1220" y="83" text-anchor="end" fill="#666B63" font-family="monospace" font-size="11" letter-spacing="2">COMPANY SUPPORT / VOICE OPERATIONS</text>
+  <path d="M60 118h1160" stroke="#CCCEC6"/>
+  <text x="62" y="161" fill="#666B63" font-family="monospace" font-size="11" letter-spacing="2">YOUR EXPERTISE. ON CALL.</text>
+  <text x="58" y="235" fill="#242722" font-family="Arial, Helvetica, sans-serif" font-size="66" letter-spacing="-3">Your company.</text>
+  <text x="58" y="307" fill="#242722" font-family="Arial, Helvetica, sans-serif" font-size="66" letter-spacing="-3">Every call.</text>
+  <text x="58" y="385" fill="#C7470B" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-style="italic" letter-spacing="-3">Understood.</text>
+  <text x="62" y="429" fill="#666B63" font-family="Arial, Helvetica, sans-serif" font-size="17">Your documents. Your policies. Your people.</text>
+  <rect x="780" y="159" width="400" height="290" rx="20" fill="#E2E2DE" stroke="#CCCEC6"/>
+  <circle cx="807" cy="190" r="3" fill="#C7470B"/>
+  <text x="820" y="194" fill="#666B63" font-family="monospace" font-size="10" letter-spacing="1.6">MADE TO CONNECT</text>
+  <g stroke="#C7470B" stroke-width="5" stroke-linecap="round">
+    <path d="M816 281v16M832 268v42M848 276v26M864 255v68M880 265v48M896 239v100M912 252v74M928 225v128M944 244v90M960 232v114M976 260v58M992 246v86M1008 268v42M1024 254v70M1040 273v32M1056 262v54M1072 278v22M1088 267v44M1104 277v24M1120 272v34M1136 283v12M1152 279v20"/>
+  </g>
+  <path d="M804 375h352" stroke="#CCCEC6"/>
+  <text x="806" y="403" fill="#242722" font-family="Arial, Helvetica, sans-serif" font-size="16">Helpful answers. Human follow-through.</text>
+  <text x="806" y="427" fill="#666B63" font-family="monospace" font-size="10" letter-spacing="1">ONE WORKSPACE. YOUR COMPANY’S VOICE.</text>
+  <path d="M60 478h1160" stroke="#CCCEC6"/>
+  <text x="62" y="518" fill="#666B63" font-family="monospace" font-size="11" letter-spacing="1.5">01 / KNOWLEDGE</text>
+  <path d="M280 514h60m-5-5 5 5-5 5" stroke="#C7470B" stroke-width="1.5"/>
+  <text x="378" y="518" fill="#666B63" font-family="monospace" font-size="11" letter-spacing="1.5">02 / CONVERSATION</text>
+  <path d="M630 514h60m-5-5 5 5-5 5" stroke="#C7470B" stroke-width="1.5"/>
+  <text x="728" y="518" fill="#666B63" font-family="monospace" font-size="11" letter-spacing="1.5">03 / HUMAN HANDOFF</text>
+  <text x="1218" y="520" text-anchor="end" fill="#C7470B" font-family="Arial, Helvetica, sans-serif" font-size="24">↗</text>
+</svg>

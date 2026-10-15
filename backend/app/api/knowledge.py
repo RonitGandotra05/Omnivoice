@@ -11,13 +11,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.config.database import get_db
+from app.config.settings import get_settings
 from app.models.models import Company, KnowledgeDocument
 from app.models.schemas import DocumentResponse
+from app.utils.elevenlabs_client import company_agent_id, provider_request, attach_knowledge, detach_knowledge
+from app.utils.access import require_operator
 from app.utils.document_parser import parse_buffer, get_supported_types
-from app.utils.embeddings import index_document
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_operator)])
+settings = get_settings()
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
@@ -39,7 +42,7 @@ async def list_documents(
 
 @router.post("", status_code=202)
 async def upload_document(
-    company_id: str = Form(...),
+    company_id: UUID = Form(...),
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
@@ -52,6 +55,11 @@ async def upload_document(
     if company_q.scalar_one_or_none() is None:
         raise HTTPException(404, "Company not found")
 
+    try:
+        agent_id = company_agent_id(company_id)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
     # Validate file
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     supported = get_supported_types()
@@ -60,7 +68,7 @@ async def upload_document(
             400, f"Unsupported file type '{ext}'. Supported: {', '.join(supported)}"
         )
 
-    buffer = await file.read()
+    buffer = await file.read(MAX_FILE_SIZE + 1)
     if len(buffer) > MAX_FILE_SIZE:
         raise HTTPException(400, f"File too large. Max {MAX_FILE_SIZE // (1024*1024)}MB")
 
@@ -81,6 +89,7 @@ async def upload_document(
     await db.flush()
 
     # Parse & index (inline for now – could be background task)
+    # We'll extract text and upload it directly to ElevenLabs Knowledge Base
     try:
         parsed = parse_buffer(buffer, ext, file.filename or "")
         content = parsed["content"]
@@ -90,26 +99,26 @@ async def upload_document(
 
         logger.info("Parsed %d chars from %s", len(content), file.filename)
 
-        result = index_document(
-            company_id,
-            str(doc_id),
-            content,
-            metadata={"filename": file.filename, "contentType": ext, **parsed.get("metadata", {})},
-        )
+        el_data = await provider_request("POST", "/knowledge-base/text", json={
+            "text": content, "name": f"{company_id}/{file.filename}"
+        })
+        # Keep the legacy DB column so existing databases need no destructive migration.
+        doc.pinecone_namespace = el_data["id"]
+        await attach_knowledge(agent_id, el_data["id"], el_data.get("name", file.filename))
 
         doc.status = "indexed"
-        doc.chunk_count = result.get("indexed", 0)
+        doc.chunk_count = 0  # Provider manages indexing; no fabricated local chunk count
         doc.indexed_at = datetime.utcnow()
 
     except Exception as exc:
         logger.exception("Failed to process document %s", doc_id)
         doc.status = "failed"
-        doc.error_message = str(exc)
+        doc.error_message = "Provider upload or attachment failed. Check the dedicated company agent configuration."
 
     await db.flush()
 
     return {
-        "message": "Document uploaded and processed",
+        "message": "Knowledge attached to company agent" if doc.status == "indexed" else "Knowledge processing failed",
         "documentId": str(doc_id),
         "status": doc.status,
         "chunkCount": doc.chunk_count,
@@ -129,6 +138,11 @@ async def delete_document(
     if doc is None:
         raise HTTPException(404, "Document not found")
 
+    if doc.pinecone_namespace and not doc.pinecone_namespace.startswith("company_"):
+        try:
+            await detach_knowledge(company_agent_id(doc.company_id), doc.pinecone_namespace)
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(502, "Provider removal failed; local document retained for retry.") from exc
     await db.delete(doc)
     await db.flush()
 

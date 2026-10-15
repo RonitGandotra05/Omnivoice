@@ -3,6 +3,7 @@ Pydantic schemas for request/response validation.
 """
 
 import re
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator, EmailStr
 from typing import Optional
 from datetime import datetime
@@ -195,10 +196,28 @@ class QueryResponse(BaseModel):
     errors: list[str] = []
 
 
+class TrialAgentType(str, Enum):
+    customer_support = "customer_support"
+    booking = "booking"
+    feedback = "feedback"
+    calling = "calling"
+
+
 class TryForFreeRequest(BaseModel):
     """Request to initiate an outbound demo call."""
+    company_name: str = Field(..., min_length=2, max_length=255)
+    agent_type: TrialAgentType
     phone_number: str = Field(..., description="E.164 phone number to call")
-    knowledge_text: str = Field(..., min_length=20, max_length=5000)
+    company_context: str = Field(..., min_length=20, max_length=8000)
+    special_instructions: Optional[str] = Field(None, max_length=4000)
+
+    @field_validator("company_name")
+    @classmethod
+    def validate_company_name(cls, v: str) -> str:
+        value = v.strip()
+        if len(value) < 2:
+            raise ValueError("Company name must be at least 2 characters")
+        return value
 
     @field_validator("phone_number")
     @classmethod
@@ -215,3 +234,18 @@ class PaginatedResponse(BaseModel):
     limit: int = Field(..., ge=1, le=100)
     total: int = Field(..., ge=0)
     pages: int = Field(..., ge=0)
+
+
+class SimulationRequest(BaseModel):
+    company_name: str = Field(..., min_length=2, max_length=120)
+    agent_type: TrialAgentType = TrialAgentType.customer_support
+    company_context: str = Field(..., min_length=20, max_length=8000)
+    special_instructions: str = Field("", max_length=2000)
+    scenario: str = Field("hours", pattern="^(hours|booking|feedback|unknown|off_topic)$")
+
+    @field_validator("company_name", "company_context")
+    @classmethod
+    def reject_blank(cls, value: str) -> str:
+        if len(value.strip()) < 2:
+            raise ValueError("Must contain text")
+        return value.strip()

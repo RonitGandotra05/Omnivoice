@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from passlib.hash import bcrypt
+import bcrypt
 
 from app.config.database import get_db
 from app.models.models import Company, CompanyService, ApiKey
@@ -21,7 +21,9 @@ from app.models.schemas import (
     PaginatedResponse,
 )
 
-router = APIRouter()
+from app.utils.access import require_operator
+
+router = APIRouter(dependencies=[Depends(require_operator)])
 
 
 @router.get("")
@@ -77,6 +79,7 @@ async def create_company(body: CompanyCreate, db: AsyncSession = Depends(get_db)
         raise HTTPException(409, "Slug already exists")
 
     company = Company(
+        services=[],
         name=body.name,
         slug=slug,
         phone_number=body.phone_number,
@@ -92,7 +95,7 @@ async def create_company(body: CompanyCreate, db: AsyncSession = Depends(get_db)
 
     # Add services
     for svc in body.services or []:
-        db.add(CompanyService(
+        company.services.append(CompanyService(
             company_id=company.id,
             name=svc.name,
             description=svc.description,
@@ -105,7 +108,7 @@ async def create_company(body: CompanyCreate, db: AsyncSession = Depends(get_db)
     raw_key = f"sk_{secrets.token_hex(24)}"
     db.add(ApiKey(
         company_id=company.id,
-        key_hash=bcrypt.hash(raw_key),
+        key_hash=bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode(),
         name="Default API Key",
         permissions=["read", "write"],
     ))
@@ -126,7 +129,7 @@ async def update_company(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a company's details."""
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(select(Company).options(selectinload(Company.services)).where(Company.id == company_id))
     company = result.scalar_one_or_none()
     if company is None:
         raise HTTPException(404, "Company not found")
@@ -143,7 +146,7 @@ async def update_company(
 @router.delete("/{company_id}")
 async def delete_company(company_id: UUID, db: AsyncSession = Depends(get_db)):
     """Soft-delete (deactivate) a company."""
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(select(Company).options(selectinload(Company.services)).where(Company.id == company_id))
     company = result.scalar_one_or_none()
     if company is None:
         raise HTTPException(404, "Company not found")

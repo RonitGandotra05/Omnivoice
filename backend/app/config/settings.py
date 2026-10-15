@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application configuration from environment variables."""
 
     # App
-    app_name: str = "Inbound Calling Agent API"
+    app_name: str = "OmniVoice Agent API"
     debug: bool = False
     api_base_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"
@@ -18,26 +18,28 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./local.db"  # Defaults to local SQLite if not set
 
-    # LLM - Cerebras
-    cerebras_api_key: str = ""
+    # ElevenLabs Agents
+    elevenlabs_api_key: str = ""
+    elevenlabs_agent_id: str = ""
+    elevenlabs_phone_number_id: str = ""
+    elevenlabs_base_url: str = "https://api.elevenlabs.io"
 
-    # Embeddings - OpenAI
-    openai_api_key: str = ""
+    # Live operations are disabled until explicitly enabled by the operator.
+    live_calls_enabled: bool = False
+    integration_api_key: str = ""
+    elevenlabs_company_agents: dict[str, str] = {}
 
-    # Vector Database - Pinecone
-    pinecone_api_key: str = ""
-    pinecone_index: str = "calling-agent-kb"
+    web_voice_enabled: bool = False
+    elevenlabs_webhook_secret: str = ""
 
-    # Speech-to-Text - Whisper
-    whisper_api_key: str = ""
-
-    # Text-to-Speech - DeepGram
-    deepgram_api_key: str = ""
-
-    # Telephony - Twilio
-    twilio_account_sid: str = ""
-    twilio_auth_token: str = ""
-    twilio_phone_number: str = ""
+    # Support email outbox (no credentials required for local previews)
+    email_enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_starttls: bool = True
 
     # Auth
     jwt_secret: str = "change-me-in-production"
@@ -47,10 +49,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-        # Map env var names to field names
-        fields = {
-            "database_url": {"env": "DATABASE_URL"},
-        }
+        extra = "ignore"
 
 
 @lru_cache()

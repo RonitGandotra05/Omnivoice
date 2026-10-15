@@ -1,83 +1,78 @@
-'use client';
-
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import Icon from "@/components/ui/Icon";
 export default function Navbar() {
-    const pathname = usePathname();
-    const [scrolled, setScrolled] = useState(false);
-
-    // Handle scroll effect for glassmorphism
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    const navLinks = [
-        { name: 'Features', path: '/#features' },
-        { name: 'Pricing', path: '/pricing' },
-        { name: 'Contact', path: '/contact' },
-    ];
-
-    return (
-        <header
-            className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'glass py-3' : 'bg-transparent py-5'
-                }`}
+  const path = usePathname();
+  const [open, setOpen] = useState(false);
+  const links = [
+    ["Overview", "/"],
+    ["Agent studio", "/try-for-free"],
+    ["Pricing", "/pricing"],
+  ];
+  return (
+    <header className="site-header">
+      <div className="nav-shell">
+        <Link href="/" className="brand" onClick={() => setOpen(false)}>
+          <span className="brand-mark" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span>
+            omni<span className="brand-light">voice</span>
+            <small>VOICE AGENT STUDIO</small>
+          </span>
+        </Link>
+        <nav className="desktop-nav" aria-label="Main navigation">
+          {links.map(([label, url]) => (
+            <Link
+              key={url}
+              href={url}
+              aria-current={path === url ? "page" : undefined}
+              className={path === url ? "active" : ""}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="nav-actions">
+          <Link href="/admin/login" className="sign-in">
+            Sign in
+          </Link>
+          <Link href="/try-for-free" className="button dark small">
+            Build an agent <Icon name="arrow" />
+          </Link>
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            aria-controls="mobile-navigation"
+            onClick={() => setOpen(!open)}
+          >
+            <Icon name={open ? "close" : "menu"} />
+          </button>
+        </div>
+      </div>
+      {open && (
+        <nav
+          id="mobile-navigation"
+          className="mobile-nav"
+          aria-label="Mobile navigation"
         >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                {/* Logo */}
-                <Link href="/" className="flex items-center gap-2 group">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
-                        O
-                    </div>
-                    <span className="text-xl font-bold tracking-tight text-white">
-                        OmniVoice <span className="text-gray-400 font-normal">Labs</span>
-                    </span>
-                </Link>
-
-                {/* Desktop Navigation */}
-                <nav className="hidden md:flex items-center gap-8">
-                    {navLinks.map((link) => (
-                        <Link
-                            key={link.name}
-                            href={link.path}
-                            className={`text-sm font-medium transition-colors hover:text-white ${pathname === link.path ? 'text-white' : 'text-gray-400'
-                                }`}
-                        >
-                            {link.name}
-                        </Link>
-                    ))}
-                </nav>
-
-                {/* Action Buttons */}
-                <div className="hidden md:flex items-center gap-4">
-                    <Link
-                        href="/admin/login"
-                        className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
-                    >
-                        Sign In
-                    </Link>
-                    <Link
-                        href="/try-for-free"
-                        className="px-5 py-2.5 rounded-full text-sm font-medium text-white bg-white/10 border border-white/20 hover:bg-white/20 hover:scale-105 transition-all w-[130px] text-center"
-                    >
-                        Try for Free
-                    </Link>
-                </div>
-
-                {/* Mobile Menu Button (simplified for now) */}
-                <div className="md:hidden flex items-center">
-                    <button className="text-gray-300 hover:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </header>
-    );
+          {[...links, ["Sign in", "/admin/login"], ["Contact", "/contact"]].map(
+            ([label, url]) => (
+              <Link key={url} href={url} onClick={() => setOpen(false)}>
+                {label}
+                <Icon name="right" />
+              </Link>
+            ),
+          )}
+        </nav>
+      )}
+    </header>
+  );
 }

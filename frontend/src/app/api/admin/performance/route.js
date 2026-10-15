@@ -1,17 +1,17 @@
-import { NextResponse } from 'next/server';
-import { verifyToken } from '@/utils/auth';
-import { pool } from '@/utils/db';
+import { NextResponse } from "next/server";
+import { verifyToken } from "@/utils/auth";
+import { pool } from "@/utils/db";
 
 export async function GET(request) {
   try {
-    const token = request.headers.get('Authorization')?.split(' ')[1];
+    const token = request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     const client = await pool.connect();
@@ -37,10 +37,10 @@ export async function GET(request) {
       client.release();
     }
   } catch (error) {
-    console.error('Error fetching performance data:', error);
+    console.error("Error fetching performance data:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch performance data' },
-      { status: 500 }
+      { error: "Failed to fetch performance data" },
+      { status: 500 },
     );
   }
-} 
+}
