@@ -142,7 +142,12 @@ export async function handleDemoAccount(request, action, env = process.env) {
             ? error.message
             : "Account service is temporarily unavailable",
       },
-      error.status || 503,
+      error.status ||
+        (error instanceof SyntaxError
+          ? 400
+          : error.message === "Request too large"
+            ? 413
+            : 503),
     );
   }
 }

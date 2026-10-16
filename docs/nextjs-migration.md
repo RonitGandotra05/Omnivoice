@@ -106,6 +106,6 @@ For the initial public browser demo, keep `SUPPORT_STORAGE=browser`, `EMAIL_ENAB
 
 ## Credential handling
 
-Keep only blank placeholders in `.env.example`. Real values belong in ignored `frontend/.env.local` and Netlify environment settings, never `NEXT_PUBLIC_*`, Git, browser storage or HTML. The credentials originally provided in the example were preserved in private local configuration and an ignored backup before sanitizing the template. `netlify env:import` configures the runtime; secrets are not declared in `netlify.toml`. Deploy the HTTPS site origin as `PUBLIC_APP_URL`.
+Keep only blank placeholders in `.env.example`. Real values belong in ignored `frontend/.env.local` and Netlify environment settings, never `NEXT_PUBLIC_*`, Git, browser storage or HTML. The credentials originally provided in the example were preserved in private local configuration and an ignored backup before sanitizing the template. `netlify env:import` configures the runtime; secrets are not declared in `netlify.toml`. Deploy the HTTPS site origin as `PUBLIC_APP_URL` and set `DEPLOYMENT_PLATFORM=netlify` in the hosting environment so IP protection uses only the platform header.
 
 Reference: [single-use conversation signatures](https://elevenlabs.io/docs/eleven-agents/api-reference/conversations/get-signed-url), [agent configuration and limits](https://github.com/elevenlabs/skills/blob/main/agents/references/agent-configuration.md), and [Netlify CLI environment management](https://cli.netlify.com/commands/env/).

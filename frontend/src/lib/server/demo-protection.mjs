@@ -13,7 +13,7 @@ export function protectionEnabled(env = process.env) {
 export function clientNetwork(request, env = process.env) {
   // Trust only Netlify's platform-set header on Netlify, never caller-supplied XFF.
   let ip =
-    env.NETLIFY === "true"
+    env.NETLIFY === "true" || env.DEPLOYMENT_PLATFORM === "netlify"
       ? request.headers.get("x-nf-client-connection-ip")
       : null;
   if (
