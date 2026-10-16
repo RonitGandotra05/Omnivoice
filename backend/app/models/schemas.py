@@ -50,8 +50,7 @@ class ServiceResponse(ServiceCreate):
     id: UUID
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class CompanyCreate(BaseModel):
@@ -113,8 +112,7 @@ class CompanyResponse(BaseModel):
     updated_at: datetime
     services: list[ServiceResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class CompanyListItem(BaseModel):
@@ -125,8 +123,7 @@ class CompanyListItem(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # ---- Knowledge Document Schemas ----
@@ -143,8 +140,7 @@ class DocumentResponse(BaseModel):
     uploaded_at: datetime
     indexed_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # ---- Interaction Schemas ----
@@ -161,8 +157,7 @@ class InteractionResponse(BaseModel):
     sentiment: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # ---- Agent Schemas ----

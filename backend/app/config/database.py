@@ -18,10 +18,12 @@ def _get_async_url(url: str) -> str:
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    # Remove sslmode param if present (asyncpg handles SSL differently)
-    if "sslmode=" in url:
-        import re
-        url = re.sub(r'[\?&]sslmode=[^&]*', '', url)
+    if url.startswith("sqlite"):
+        return url
+    from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+    parts = urlsplit(url)
+    query = [(key, value) for key, value in parse_qsl(parts.query) if key not in ('sslmode', 'channel_binding')]
+    url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
     return url
 
 
@@ -31,7 +33,8 @@ async_url = _get_async_url(settings.database_url)
 is_sqlite = async_url.startswith("sqlite")
 
 engine_kwargs = {
-    "echo": settings.debug,
+    "echo": settings.debug and not settings.production_mode,
+    "hide_parameters": True,
 }
 
 if not is_sqlite:
@@ -40,8 +43,11 @@ if not is_sqlite:
         "max_overflow": 20,
         "pool_pre_ping": True,
     })
-    if "neon" in async_url:
-        engine_kwargs["connect_args"] = {"ssl": "require"}
+    from urllib.parse import urlsplit
+    import ssl
+    hostname = urlsplit(async_url).hostname
+    if settings.production_mode or hostname not in ('localhost', '127.0.0.1', '::1'):
+        engine_kwargs["connect_args"] = {"ssl": ssl.create_default_context()}
 
 engine = create_async_engine(async_url, **engine_kwargs)
 

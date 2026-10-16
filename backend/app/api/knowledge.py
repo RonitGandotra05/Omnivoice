@@ -16,7 +16,8 @@ from app.models.models import Company, KnowledgeDocument
 from app.models.schemas import DocumentResponse
 from app.utils.elevenlabs_client import company_agent_id, provider_request, attach_knowledge, detach_knowledge
 from app.utils.access import require_operator
-from app.utils.document_parser import parse_buffer, get_supported_types
+from app.utils.document_parser import get_supported_types
+from app.utils.parse_async import parse_isolated
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_operator)])
@@ -61,7 +62,11 @@ async def upload_document(
         raise HTTPException(409, str(exc)) from exc
 
     # Validate file
-    ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    from app.security.uploads import filename_extension
+    try:
+        ext = filename_extension(file.filename)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     supported = get_supported_types()
     if ext not in supported:
         raise HTTPException(
@@ -71,6 +76,9 @@ async def upload_document(
     buffer = await file.read(MAX_FILE_SIZE + 1)
     if len(buffer) > MAX_FILE_SIZE:
         raise HTTPException(400, f"File too large. Max {MAX_FILE_SIZE // (1024*1024)}MB")
+
+    # Security errors must be returned before creating records or invoking providers.
+    parsed = await parse_isolated(buffer, ext)
 
     # Create DB record
     doc_id = uuid.uuid4()
@@ -91,13 +99,14 @@ async def upload_document(
     # Parse & index (inline for now – could be background task)
     # We'll extract text and upload it directly to ElevenLabs Knowledge Base
     try:
-        parsed = parse_buffer(buffer, ext, file.filename or "")
+        if parsed.get("metadata", {}).get("needs_review"):
+            raise ValueError("OCR text requires review. Upload through the company workspace instead.")
         content = parsed["content"]
 
         if len(content) < 10:
             raise ValueError("Document appears to be empty or too short")
 
-        logger.info("Parsed %d chars from %s", len(content), file.filename)
+        logger.info("Parsed %d document characters", len(content))
 
         el_data = await provider_request("POST", "/knowledge-base/text", json={
             "text": content, "name": f"{company_id}/{file.filename}"

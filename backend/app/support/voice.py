@@ -5,16 +5,17 @@ import json
 import time
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.database import get_db
 from app.config.settings import get_settings
 from app.models.models import Company
 from app.support.api import tenant, profile_for, documents_for
-from app.support.models import SupportConversation, SupportVoiceDocument
+from app.support.models import SupportConversation, SupportVoiceDocument, SupportDocument, SupportCheckSuite
 from app.support.service import voice_prompt
-from app.utils.elevenlabs_client import company_agent_id, provider_request, attach_knowledge, detach_knowledge
+from app.support.schemas import Profile
+from app.utils.elevenlabs_client import company_agent_id, provider_request, attach_knowledge, detach_knowledge, ensure_indexed
 
 router = APIRouter()
 
@@ -31,7 +32,7 @@ async def session(company: Company = Depends(tenant)):
         raise HTTPException(503, 'Company voice session is unavailable. Check the dedicated agent mapping and credentials.') from exc
 
 
-@router.post('/{company_id}/voice/sync')
+# Internal sync implementation; the durable /voice/publish queue is the public entry point.
 async def sync(company: Company = Depends(tenant), db: AsyncSession = Depends(get_db)):
     if not get_settings().web_voice_enabled:
         raise HTTPException(403, 'Enable WEB_VOICE_ENABLED to sync documents to ElevenLabs.')
@@ -41,30 +42,54 @@ async def sync(company: Company = Depends(tenant), db: AsyncSession = Depends(ge
         raise HTTPException(409, str(exc)) from exc
     profile = await profile_for(company, db)
     docs = await documents_for(company.id, db)
-    # Serialize sync operations for a tenant; reuse provider IDs on repeat syncs.
+    expected_checks = (await db.execute(select(SupportCheckSuite.cases).where(SupportCheckSuite.company_id == company.id))).scalar_one_or_none() or []
+    # Reuse provider IDs on retries. The publishing worker owns the tenant lease.
     await db.execute(select(Company.id).where(Company.id == company.id).with_for_update())
     rows = (await db.execute(select(SupportVoiceDocument).where(SupportVoiceDocument.company_id == company.id))).scalars().all()
     if any(row.agent_id != agent_id for row in rows):
         raise HTTPException(409, 'Agent mapping changed. Remove old provider attachments before reassigning this company.')
     try:
         current_ids = {d.id for d in docs}
-        for row in rows:
-            if row.document_id not in current_ids:
-                await detach_knowledge(agent_id, row.provider_id)
-                await db.delete(row)
-                await db.commit()
+        obsolete = [row for row in rows if row.document_id not in current_ids]
         existing = {row.document_id: row for row in rows if row.document_id in current_ids}
+        prepared = []
         for doc in docs:
             row = existing.get(doc.id)
             if not row:
                 uploaded = await provider_request('POST', '/knowledge-base/text', json={'text': doc.content, 'name': f'{company.id}/{doc.name}'})
                 row = SupportVoiceDocument(document_id=doc.id, company_id=company.id, agent_id=agent_id, provider_id=uploaded['id'])
                 db.add(row)
-                await db.commit()  # Preserve provider ID even if attachment fails; retry safely.
-            await attach_knowledge(agent_id, row.provider_id, doc.name)
+                await db.commit()
+            await ensure_indexed(row.provider_id, doc.content)
+            prepared.append({'type': 'text', 'id': row.provider_id, 'name': doc.name, 'usage_mode': 'auto'})
+        agent = await provider_request('GET', f'/agents/{agent_id}')
+        from app.support.runtime_tools import publish_runtime_tool
+        runtime_config, runtime_warning = await publish_runtime_tool(company, agent_id, agent, db)
+        await db.execute(update(Company).where(Company.id == company.id).values(updated_at=Company.updated_at))
+        # Recheck source IDs and settings before changing a live agent. Ingestion can
+        # continue while indexing runs, but a changed workspace must be republished.
+        from app.support.models import SupportProfile
+        active = (await db.execute(select(Company.is_active).where(Company.id == company.id))).scalar_one()
+        latest_ids = set((await db.execute(select(SupportDocument.id).where(SupportDocument.company_id == company.id))).scalars())
+        saved_profile = (await db.execute(select(SupportProfile.configuration).where(SupportProfile.company_id == company.id))).scalar_one_or_none()
+        latest_checks = (await db.execute(select(SupportCheckSuite.cases).where(SupportCheckSuite.company_id == company.id))).scalar_one_or_none() or []
+        if latest_checks != expected_checks or company_agent_id(company.id) != agent_id or not active or latest_ids != current_ids or (saved_profile is not None and Profile.model_validate(saved_profile).model_dump() != profile.model_dump()):
+            raise RuntimeError('Workspace changed during indexing. Publish again.')
+        previous = agent.get('conversation_config', {}).get('agent', {}).get('prompt', {}).get('knowledge_base', [])
+        managed = {row.provider_id for row in rows} | {item['id'] for item in prepared}
+        retained = [item for item in previous if item.get('id') not in managed]
+        # One final update attaches the fully indexed set, rather than exposing a
+        # partially published document list over 35 individual updates.
         await provider_request('PATCH', f'/agents/{agent_id}', json={'conversation_config': {'agent': {
-            'first_message': profile.greeting, 'prompt': {'prompt': voice_prompt(profile)}}}})
-        return {'synced': len(docs), 'agent_id': agent_id, 'message': 'Company documents, prompt, and greeting synchronized. Configure server tools and enable RAG in the agent dashboard.'}
+            'first_message': profile.greeting, 'prompt': {'prompt': voice_prompt(profile), 'timezone': profile.timezone, **runtime_config,
+                'rag': {'enabled': True, 'embedding_model': get_settings().rag_embedding_model},
+                'knowledge_base': retained + prepared}}}})
+        for row in obsolete:
+            await provider_request('DELETE', f'/knowledge-base/{row.provider_id}', allow_not_found=True)
+            await db.delete(row)
+        await db.commit()
+        return {'synced': len(docs), 'agent_id': agent_id, 'caller_tools_ready': runtime_warning is None, 'warning': runtime_warning, 'message': 'Verified company knowledge and greeting published; native indexing completed for larger documents.'}
+
     except (RuntimeError, KeyError) as exc:
         raise HTTPException(502, 'ElevenLabs sync incomplete. Saved uploads will be reused on retry. Check provider configuration.') from exc
 
@@ -72,7 +97,11 @@ async def sync(company: Company = Depends(tenant), db: AsyncSession = Depends(ge
 @router.get('/{company_id}/conversations')
 async def conversations(company: Company = Depends(tenant), db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(select(SupportConversation).where(SupportConversation.company_id == company.id).order_by(SupportConversation.created_at.desc()).limit(100))).scalars().all()
-    return {'conversations': [{'id': r.id, 'status': r.status, 'summary': r.summary, 'duration_seconds': r.duration_seconds, 'transcript': r.transcript, 'outcome': r.outcome} for r in rows]}
+    from app.support.models import SupportCaller
+    from app.support.callers import caller_json
+    callers = (await db.execute(select(SupportCaller).where(SupportCaller.company_id == company.id, SupportCaller.conversation_id.in_([r.id for r in rows])))).scalars().all()
+    details = {row.conversation_id: caller_json(row) for row in callers}
+    return {'conversations': [{'caller': details.get(r.id), 'created_at': r.created_at.isoformat(), 'id': r.id, 'status': r.status, 'summary': r.summary, 'duration_seconds': r.duration_seconds, 'transcript': r.transcript, 'outcome': r.outcome} for r in rows]}
 
 
 def verify_event(raw, signature, secret):

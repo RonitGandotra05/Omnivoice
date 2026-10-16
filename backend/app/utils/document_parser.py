@@ -41,6 +41,8 @@ def parse_buffer(buffer: bytes, content_type: str, filename: str = "") -> dict:
         {"content": str, "metadata": dict}
     """
     ext = _normalize_type(content_type, filename)
+    from app.security.uploads import validate_passive
+    validate_passive(buffer, ext)
 
     parsers = {
         "pdf": _parse_pdf,
@@ -54,31 +56,89 @@ def parse_buffer(buffer: bytes, content_type: str, filename: str = "") -> dict:
     if parser is None:
         raise ValueError(f"Unsupported file type: {ext}")
 
-    return parser(buffer, filename)
+    result = parser(buffer, filename)
+    from app.config.settings import get_settings
+    if len(result['content']) > get_settings().max_document_characters:
+        raise ValueError('Extracted text exceeds the document limit. Split this document.')
+    return result
 
 
 # ── Parsers ───────────────────────────────────────────────────────────
 
 def _parse_pdf(buffer: bytes, filename: str) -> dict:
     if not _HAS_PDF:
-        raise RuntimeError("pypdf not installed – cannot parse PDF")
+        raise ValueError("PDF support is not installed.")
+    from app.config.settings import get_settings
+    from app.utils.ocr import recognize, availability
+    settings = get_settings()
     reader = PdfReader(BytesIO(buffer))
-    pages = [page.extract_text() or "" for page in reader.pages]
-    return {
-        "content": _clean("\n\n".join(pages)),
-        "metadata": {"pages": len(reader.pages), "filename": filename},
-    }
+    if reader.is_encrypted:
+        raise ValueError("Password-protected PDFs are not supported. Upload an unlocked copy.")
+    if not 1 <= len(reader.pages) <= settings.pdf_max_pages:
+        raise ValueError(f"PDFs must have 1–{settings.pdf_max_pages} pages. Split larger documents.")
+    from app.security.uploads import validate_pdf_objects
+    validate_pdf_objects(reader)
+    pages, quality, warnings = [], [], []
+    rendered = None
+    ocr_count = 0
+    try:
+        for index, page in enumerate(reader.pages):
+            text = _clean(page.extract_text() or "")
+            readable = len(text) >= 40 and sum(c.isalnum() for c in text) / max(1, len(text)) >= 0.4 and "\ufffd" not in text
+            info = {"page": index + 1, "method": "text", "confidence": None}
+            if not readable:
+                if not settings.ocr_enabled or not availability(settings.ocr_languages):
+                    raise ValueError(f"Page {index + 1} requires OCR. Install Tesseract and the configured language packs, or upload a searchable PDF.")
+                ocr_count += 1
+                if ocr_count > settings.pdf_max_ocr_pages:
+                    raise ValueError(f"At most {settings.pdf_max_ocr_pages} scanned pages per file are supported. Split this PDF.")
+                if rendered is None:
+                    import pypdfium2 as pdfium
+                    rendered = pdfium.PdfDocument(buffer)
+                rendered_page = rendered[index]
+                scale = settings.ocr_dpi / 72
+                width, height = rendered_page.get_size()
+                if width * height * scale * scale > settings.pdf_max_render_pixels:
+                    rendered_page.close()
+                    raise ValueError("A PDF page exceeds the safe image size. Resize or split the document.")
+                bitmap = rendered_page.render(scale=scale)
+                image = bitmap.to_pil().convert('RGB')
+                try:
+                    result = recognize(image, languages=settings.ocr_languages)
+                finally:
+                    image.close()
+                    bitmap.close()
+                    rendered_page.close()
+                text = _clean(result['text'])
+                info.update(method="ocr", confidence=result['confidence'], rotation=result['rotation'])
+                if len(text) < 10:
+                    warnings.append(f"Page {index + 1}: no reliable text could be extracted.")
+                elif result['confidence'] < settings.ocr_min_confidence:
+                    warnings.append(f"Page {index + 1}: OCR confidence is low; review the extracted text.")
+            pages.append(text)
+            quality.append(info)
+            if sum(map(len, pages)) > settings.max_document_characters:
+                raise ValueError("Extracted text exceeds the document limit. Split this PDF.")
+    finally:
+        if rendered is not None:
+            rendered.close()
+    content = _clean("\n\n".join(pages))
+    if len(content) < 10:
+        raise ValueError("No readable text was found. Provide a clearer scan or a text document.")
+    return {"content": content, "metadata": {"pages": len(pages), "filename": filename,
+        "ocr_pages": ocr_count, "page_quality": quality, "warnings": warnings,
+        "needs_review": bool(warnings) or (ocr_count > 0 and settings.ocr_review_required)}}
 
 
 def _parse_text(buffer: bytes, filename: str) -> dict:
     return {
-        "content": _clean(buffer.decode("utf-8")),
+        "content": _clean(buffer.decode("utf-8-sig")),
         "metadata": {"filename": filename},
     }
 
 
 def _parse_json(buffer: bytes, filename: str) -> dict:
-    data = json.loads(buffer.decode("utf-8"))
+    data = json.loads(buffer.decode("utf-8-sig"))
     text = _json_to_text(data)
     return {
         "content": _clean(text),
@@ -89,6 +149,11 @@ def _parse_json(buffer: bytes, filename: str) -> dict:
 def _parse_docx(buffer: bytes, filename: str) -> dict:
     if not _HAS_DOCX:
         raise RuntimeError("python-docx not installed – cannot parse DOCX")
+    import zipfile
+    with zipfile.ZipFile(BytesIO(buffer)) as archive:
+        entries = archive.infolist()
+        if len(entries) > 10000 or sum(item.file_size for item in entries) > 100 * 1024 * 1024:
+            raise ValueError('DOCX expanded contents exceed the safe size limit.')
     doc = docx.Document(BytesIO(buffer))
     paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
     for table in doc.tables:

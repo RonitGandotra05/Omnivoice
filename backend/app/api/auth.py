@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from jose import jwt
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.utils.access import require_operator
 from sqlalchemy.ext.asyncio import AsyncSession

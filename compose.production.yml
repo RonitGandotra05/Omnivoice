@@ -1,0 +1,60 @@
+# Supply secrets through the deployment environment; no credential defaults.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: backend/.env
+    environment:
+      PRODUCTION_MODE: "true"
+      PUBLIC_DEMO_ENABLED: "false"
+      RATE_LIMIT_ENABLED: "true"
+      MALWARE_SCAN_ENABLED: "true"
+      CLAMD_HOST: antivirus
+      PARSER_SANDBOX_REQUIRED: "true"
+      ALLOW_LEGACY_PLAINTEXT_READS: "false"
+    ports: ["127.0.0.1:8000:8000"]
+    networks: [default, antivirus]
+    mem_limit: 4g
+    cpus: 2
+    pids_limit: 128
+    read_only: true
+    tmpfs: ["/tmp:size=512m,mode=1777"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+  studio:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    env_file: frontend/.env.local
+    environment:
+      BACKEND_URL: http://api:8000
+    ports: ["127.0.0.1:3000:3000"]
+    mem_limit: 768m
+    cpus: 1
+    pids_limit: 128
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  antivirus:
+    image: clamav/clamav:1.5.4-debian
+    networks: [antivirus]
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+      - ./deploy/clamd.conf:/etc/clamav/clamd.conf:ro
+    mem_limit: 4g
+    cpus: 2
+    pids_limit: 128
+    restart: unless-stopped
+    # No host ports. Only the API joins this dedicated network. Freshclam needs
+    # outbound access to update signatures; restrict it at the deployment firewall.
+
+networks:
+  antivirus: {}
+volumes:
+  clamav-signatures: {}
