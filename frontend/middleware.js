@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { boundedBody, sameOrigin } from "./src/lib/request-security.mjs";
-import { verifyAdminSession } from "./src/lib/admin-session";
+import { verifyAuthToken } from "./src/lib/auth";
 export async function middleware(request) {
   if (!sameOrigin(request))
     return NextResponse.json(
@@ -17,10 +17,12 @@ export async function middleware(request) {
       );
     }
   }
+  // Middleware checks the signed claim using Web Crypto only. Every admin API
+  // independently verifies current database role/revocation in its Node handler.
   const token = request.cookies.get("auth_token")?.value;
   let user;
   try {
-    user = token ? await verifyAdminSession(token) : null;
+    user = token ? await verifyAuthToken(token) : null;
   } catch {
     return NextResponse.json(
       { error: "Account verification is temporarily unavailable." },
@@ -36,7 +38,6 @@ export async function middleware(request) {
   return NextResponse.redirect(new URL("/admin/login", request.url));
 }
 export const config = {
-  runtime: "nodejs",
   matcher: [
     "/admin/dashboard/:path*",
     "/admin/users/:path*",

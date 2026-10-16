@@ -4,7 +4,9 @@ import { pool } from "@/utils/db";
 
 export async function GET(request, { params }) {
   try {
-    const token = request.headers.get("Authorization")?.split(" ")[1];
+    const token =
+      request.cookies?.get("auth_token")?.value ||
+      request.headers.get("Authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
