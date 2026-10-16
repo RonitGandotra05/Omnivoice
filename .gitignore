@@ -63,3 +63,21 @@ yarn-error.log*
 *.key
 *.p12
 *.pfx
+
+# Rebuilt by the parser asset preparation script
+frontend/public/vendor/
+
+# Local Netlify folder
+.netlify
+
+# Local hosting state and verification suites (not committed)
+.netlify/
+frontend/.netlify/
+frontend/tests/
+backend/tests/
+docs/test-fixtures/
+
+# Local verification runners
+frontend/scripts/check-live-voice.mjs
+frontend/scripts/verify-next.mjs
+frontend/scripts/verify-ui.cjs

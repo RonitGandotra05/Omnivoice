@@ -17,104 +17,89 @@
 
 ## Built for your business
 
-OmniVoice turns company documents, policies, and support workflows into a configurable calling agent. Customers get grounded answers; your team gets clear escalations with the context to follow through.
+OmniVoice turns company documents and support workflows into a configurable calling agent. The active app is **Next.js**, with browser document processing and IndexedDB storage by default. **No Python server is needed.** Document setup and text previews work locally; public voice demos use Neon-backed abuse protection.
 
 | Your workspace | What it does |
 | :--- | :--- |
-| **01 · Company brief** | Set the company identity, greeting, tone, and default support inbox. |
-| **02 · Knowledge** | Upload PDF, DOCX, TXT, Markdown, or JSON documents and inspect the extracted text. |
-| **03 · Escalations** | Route issues to specialist teams. Save tickets, track SMTP delivery, and retry failed emails. |
-| **04 · Test conversation** | Preview source-cited answers and human handoffs. Start live voice in a configured workspace. |
-| **05 · Connect** | Integrate company-scoped APIs, synchronize voice knowledge, and review completed call activity. |
+| **01 · Company brief** | Identity, greeting, tone, human hours, timezone and holiday closures. |
+| **02 · Knowledge** | Batch-import PDF, DOCX, TXT, Markdown and JSON. Extract text locally; review OCR before use. |
+| **03 · Escalations** | Route issues and save human/callback requests. Optional PostgreSQL enables server email and shared records. |
+| **04 · Test conversation** | Source-cited text answers, saved regression checks, caller journeys and configured live browser voice. |
+| **05 · Setup & activity** | Publish approved knowledge, review caller details and follow conversations. |
 
-> **Start without credentials.** The sandbox parses documents and previews answers and routing against your local backend. Demo tickets never send email or place calls. Live voice and email stay off until you explicitly enable them.
+> **Local first.** Workspace data stays in this browser until you explicitly publish approved extracted text to your voice agent. Original documents are not uploaded. Local requests do not send email or make phone calls.
+
+## Run it locally
+
+Requires **Node.js 22**. From the repository root:
+
+```sh
+cd frontend
+npm ci
+cp .env.example .env.local
+npm run dev -- --hostname 127.0.0.1
+```
+
+Open **[the company studio](http://127.0.0.1:3000/try-for-free)**. Configure your company, import documents, define specialist teams and ask a customer question. The PDF/OCR worker and English model assets are prepared automatically from locked npm dependencies. No system OCR installation is required.
+
+For a production build:
+
+```sh
+npm run build
+npm start -- --hostname 127.0.0.1
+```
+
+## Bring your voice
+
+Set the server-side **`ELEVENLABS_API_KEY`** in `frontend/.env.local` or the hosting environment. Save your workspace, review OCR, then select **Publish knowledge**. Start a voice conversation after publication completes. Each browser receives a private workspace agent and owner-bound signed session; provider credentials stay on the server. Public demos reserve one **60-second call per IP and browser every rolling 24 hours**, backed by Neon. Failed connection attempts consume that reservation to prevent replay.
+
+| Mode | Storage | Available operations |
+| :--- | :--- | :--- |
+| **Browser workspace · default** | IndexedDB on this device | Knowledge, checks, caller details, browser transcripts, local callback queue, configured live browser demo. |
+| **Connected company · optional** | Encrypted PostgreSQL / Neon | Shared records, authenticated server API, native phone tools, signed post-call history and SMTP outbox. |
+
+Use `DATABASE_URL` or `NEON_DB_CONNECTION_STRING` when you are ready for shared storage. The new PostgreSQL adapter is independent of the retained Python tables. It uses verified TLS, tenant-bound encryption, transactions and shared quotas. Public demo limits and trial accounts use separate `ov_demo_*` tables, while documents and caller records remain in IndexedDB. Account creation never resets the IP allowance or grants administrator access. Longer trials require explicit account approval. Email and telephone integrations stay disabled.
+
+**[Deployment, environment variables and migration guide →](docs/nextjs-migration.md)**
 
 ## From knowledge to follow-through
 
 **Your documents → Grounded conversation → The right human.**
 
-Each company has its own API keys, knowledge, routing configuration, and dedicated voice agent. Key permissions and expiration checks protect access. Escalation tickets persist before email delivery, and signed post-call events capture transcripts, summaries, duration, and outcomes.
+Text previews use attributed extractive search. Live voice uses the configured provider's native reasoning and knowledge retrieval. The prompt asks for the caller's preferred name, reason and consented callback contacts, then saves confirmed details through a connected tool. Contact details are self-reported, not account authentication.
 
-The studio’s text preview uses attributed **extractive document search**. Natural voice conversations use the configured voice platform and its native knowledge retrieval. Test both before taking customer calls.
+Human hours use the company timezone, holidays and overnight shifts. A callback is a saved request, not a guaranteed appointment. Browser conversations cannot transfer to a telephone; native telephone support while browsers are closed needs the optional server database and phone integration.
 
-## Run it locally
+## Built for careful operation
 
-### 1. Start the support API
+| Documents | Processing | Publishing |
+| :--- | :--- | :--- |
+| **100 sources** · **35-file batches** | Two local workers · cancellation · 150-second timeout | Signed owner-bound document receipts |
+| **10 MB/file** · **200k characters/file** · **5m/workspace** | Native PDF text + local English Tesseract OCR | Indexing and saved-check gates |
+| PDF · DOCX · TXT · Markdown · JSON | Expansion/page/pixel limits · OCR review | Resume interrupted preparation without Python |
 
-From the repository root:
+Browser parsers reject unsupported archives, excessive expansion, active PDF content and unsafe DOCX structures. They do not provide antivirus certification or the retained Python container's Linux sandbox. Treat imported text as untrusted reference data. Parsed content is displayed as text and validated again before publication.
 
-```sh
-cd backend
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
+IndexedDB is local browser storage; clearing site data removes it. Export a backup. Published text and voice conversations are processed by the voice platform. Use **Remove published voice copies** to clean known published resources; lost/expired ownership grants may require dashboard cleanup. Public voice operations require shared Neon-backed limits and fail closed when protection is unavailable. Also set provider usage limits for public access.
 
-### 2. Start the studio
+## Deploy to Netlify
 
-In a second terminal, from the repository root. Requires Node.js 20.9 or later:
-
-```sh
-cd frontend
-npm ci
-npm run dev -- --hostname 127.0.0.1
-```
-
-### 3. Make it your agent
-
-Open **[the company studio](http://127.0.0.1:3000/try-for-free)**. Edit the example company, add documents, define specialist inboxes, and ask a customer question. Save the demo workspace to keep it in that browser.
-
-| Local service | Address |
-| :--- | :--- |
-| Company studio | [127.0.0.1:3000](http://127.0.0.1:3000) |
-| Support API | [127.0.0.1:8000](http://127.0.0.1:8000/health) |
-| API reference | [Interactive endpoint documentation](http://127.0.0.1:8000/docs) |
-
-## Connect your company
-
-Copy the example configuration files, then add your credentials locally:
-
-```sh
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env.local
-```
-
-| Configuration | Purpose |
-| :--- | :--- |
-| **Company access** | Create a company with the operator API, then save its returned company ID and API key. |
-| **Connected studio** | Set server-side `SUPPORT_COMPANY_ID` and `SUPPORT_API_KEY`, then sign in as an administrator. |
-| **Voice** | Configure the dedicated company agent, knowledge synchronization, server tools, and signed call webhooks. |
-| **Email** | Add SMTP settings and explicitly enable delivery. Tickets remain saved when email is unconfigured. |
-
-**[Read the company integration guide →](docs/company-integration.md)**
-
-It covers environment variables, tenant endpoints, voice-provider setup, telephony, escalation tools, email delivery semantics, and operational limits. Provider-specific details live in operator documentation; the customer-facing interface uses OmniVoice branding.
-
-## Built with clear boundaries
-
-- **Secrets stay on the server.** Real environment files and private credential files are excluded from Git; examples contain placeholders.
-- **Company data stays scoped.** Support endpoints authenticate each company key and check permissions, expiry, and company activity.
-- **Actions have receipts.** Confirm tickets and connected actions from actual tool results. SMTP acceptance is tracked separately from guaranteed inbox delivery.
-- **The demo is a sandbox.** Drafts stay in browser storage. Use a connected workspace for persistent company operations.
-
-The backend supports multiple companies. Each studio deployment currently connects to one company through server configuration. Use PostgreSQL for concurrent production traffic. Live transfers, booking fulfillment, billing, and background email retries require additional integrations.
-
-## Check the build
+Connect this repository using the root **[netlify.toml](netlify.toml)**. It builds `frontend/` and deploys Next.js routes with the framework adapter. Set `PUBLIC_APP_URL` to the real HTTPS origin and add secrets to the server environment. No Render service, Python function or port-8000 proxy is involved.
 
 ```sh
 cd frontend
 npm run lint
 npm run build
-npm audit --omit=dev
+npm run check:secrets
 ```
 
-Local verification covered document retrieval, company isolation, escalation routing and retries, mocked voice/webhook integrations, and browser flows at phone, tablet, and desktop widths. New test sources and browser artifacts are intentionally excluded from this change.
+The local verification suite (kept out of commits as requested) covers IndexedDB concurrency, contact consent, knowledge checks, business hours/DST, private voice grants, mocked provider publishing, PostgreSQL transactions/encryption and real JavaScript PDF/OCR engines. No real calls or emails are sent by the test suite. See **[verification notes](docs/verification.md)**.
 
-Live audio quality, native retrieval, telephony, and actual email delivery need a controlled credentialed integration test. See the integration guide for the remaining dependency and operational notes.
+## Project notes
 
----
+- **[Next.js migration and operations](docs/nextjs-migration.md)** — current application architecture and deployment.
+- **[Security boundaries](docs/security.md)** — local storage, server secrets and retained Python security controls.
+- **[Open-source research](docs/open-source-research.md)** — source review, licences and adopted patterns.
+- **[Earlier Python integration guide](docs/company-integration.md)** — retained implementation, disconnected from the default app.
 
-<p align="center">
-  <strong>OmniVoice</strong><br />
-  <sub>Good conversations. Thoughtfully built.</sub>
-</p>
+The Python code remains available in `backend/`. Nothing in the current studio requires it to run.

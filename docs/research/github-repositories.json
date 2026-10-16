@@ -1,0 +1,137 @@
+{
+  "observed_utc": "2026-10-16T14:31:11.270668+00:00",
+  "repositories": [
+    {
+      "repo": "pipecat-ai/pipecat",
+      "stars": 16531,
+      "forks": 2892,
+      "license": "BSD-2-Clause",
+      "archived": false,
+      "pushed_at": "2026-10-16T14:11:28Z",
+      "branch": "main",
+      "description": "Open Source framework for voice agents, multimodal apps, and realtime AI. Maintained by Daily and the community.",
+      "url": "https://github.com/pipecat-ai/pipecat"
+    },
+    {
+      "repo": "livekit/agents",
+      "stars": 14769,
+      "forks": 3945,
+      "license": "Apache-2.0",
+      "archived": false,
+      "pushed_at": "2026-10-16T07:23:36Z",
+      "branch": "main",
+      "description": "A framework for building realtime voice AI agents \ud83e\udd16\ud83c\udf99\ufe0f\ud83d\udcf9 ",
+      "url": "https://github.com/livekit/agents"
+    },
+    {
+      "repo": "huggingface/speech-to-speech",
+      "stars": 13480,
+      "forks": 1721,
+      "license": "Apache-2.0",
+      "archived": false,
+      "pushed_at": "2026-10-15T15:02:09Z",
+      "description": "Build voice agents with open-source models",
+      "url": "https://github.com/huggingface/speech-to-speech",
+      "branch": "main"
+    },
+    {
+      "repo": "TEN-framework/ten-framework",
+      "stars": 11171,
+      "forks": 1366,
+      "license": "NOASSERTION",
+      "archived": false,
+      "pushed_at": "2026-10-16T14:25:47Z",
+      "branch": "main",
+      "description": " Open-source framework for conversational voice AI agents",
+      "url": "https://github.com/TEN-framework/ten-framework"
+    },
+    {
+      "repo": "GetStream/Vision-Agents",
+      "stars": 8171,
+      "forks": 694,
+      "license": "Apache-2.0",
+      "archived": false,
+      "pushed_at": "2026-10-16T14:32:53Z",
+      "description": "Open Vision Agents by Stream. Build voice and vision agents quickly with any model or video provider. Uses Stream's edge network for ultra-low latency.",
+      "url": "https://github.com/GetStream/Vision-Agents",
+      "branch": "main"
+    },
+    {
+      "repo": "dograh-hq/dograh",
+      "stars": 5888,
+      "forks": 1499,
+      "license": "BSD-2-Clause",
+      "archived": false,
+      "pushed_at": "2026-10-15T12:21:19Z",
+      "branch": "main",
+      "description": "Open source voice AI platform. Self-hosted alternative to Vapi and Retell. On Prem, BYOK across  Speech to Speech or LLM/STT/TTS, with a visual workflow builder, MCP native and telephony support.",
+      "url": "https://github.com/dograh-hq/dograh"
+    },
+    {
+      "repo": "vocodedev/vocode-core",
+      "stars": 3804,
+      "forks": 656,
+      "license": "MIT",
+      "archived": false,
+      "pushed_at": "2024-11-15T22:16:58Z",
+      "description": "\ud83e\udd16 Build voice-based LLM agents. Modular + open source.",
+      "url": "https://github.com/vocodedev/vocode-core",
+      "branch": "main"
+    },
+    {
+      "repo": "elevenlabs/ui",
+      "stars": 2424,
+      "forks": 176,
+      "license": "MIT",
+      "archived": false,
+      "pushed_at": "2026-10-16T06:10:50Z",
+      "description": "ElevenLabs UI is a component library and custom registry built on top of shadcn/ui to help you build multimodal agents faster.",
+      "url": "https://github.com/elevenlabs/ui",
+      "branch": "main"
+    },
+    {
+      "repo": "bolna-ai/bolna",
+      "stars": 794,
+      "forks": 374,
+      "license": "MIT",
+      "archived": false,
+      "pushed_at": "2026-10-16T13:39:16Z",
+      "branch": "master",
+      "description": "Conversational voice AI agents",
+      "url": "https://github.com/bolna-ai/bolna"
+    },
+    {
+      "repo": "elevenlabs/examples",
+      "stars": 629,
+      "forks": 285,
+      "license": "MIT",
+      "archived": false,
+      "pushed_at": "2026-10-02T13:13:03Z",
+      "branch": "main",
+      "description": null,
+      "url": "https://github.com/elevenlabs/examples"
+    },
+    {
+      "repo": "jambonz/jambonz-feature-server",
+      "stars": 104,
+      "forks": 78,
+      "license": "MIT",
+      "archived": false,
+      "pushed_at": "2026-10-12T01:23:14Z",
+      "branch": "main",
+      "description": "Core telephony feature server for the jambones platform",
+      "url": "https://github.com/jambonz/jambonz-feature-server"
+    },
+    {
+      "repo": "elevenlabs/cli",
+      "stars": 100,
+      "forks": 19,
+      "license": "MIT",
+      "archived": false,
+      "pushed_at": "2026-10-15T13:48:04Z",
+      "branch": "main",
+      "description": "Command Line Interface to interact with ElevenLabs voice agents",
+      "url": "https://github.com/elevenlabs/cli"
+    }
+  ]
+}
