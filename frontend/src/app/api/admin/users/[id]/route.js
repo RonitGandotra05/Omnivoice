@@ -9,7 +9,9 @@ export async function GET(request, { params }) {
     const { id } = await params;
 
     // Verify authentication
-    const token = request.headers.get("authorization")?.split(" ")[1];
+    const token =
+      request.cookies?.get("auth_token")?.value ||
+      request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -53,7 +55,9 @@ export async function PUT(request, { params }) {
     const { id } = await params;
 
     // Verify authentication
-    const token = request.headers.get("authorization")?.split(" ")[1];
+    const token =
+      request.cookies?.get("auth_token")?.value ||
+      request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -155,7 +159,9 @@ export async function DELETE(request, { params }) {
     const { id } = await params;
 
     // Verify authentication
-    const token = request.headers.get("authorization")?.split(" ")[1];
+    const token =
+      request.cookies?.get("auth_token")?.value ||
+      request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

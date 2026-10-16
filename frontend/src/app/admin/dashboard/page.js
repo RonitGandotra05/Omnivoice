@@ -8,13 +8,13 @@ export default function Dashboard() {
     [error, setError] = useState("");
   const router = useRouter();
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      router.replace("/admin/login");
-      return;
-    }
-    fetch("/api/admin/stats", { headers: { Authorization: `Bearer ${token}` } })
+    localStorage.removeItem("authToken");
+    fetch("/api/admin/stats", { cache: "no-store" })
       .then(async (r) => {
+        if (r.status === 401 || r.status === 403) {
+          router.replace("/admin/login");
+          throw Error("Please sign in again.");
+        }
         if (!r.ok)
           throw Error(
             "Could not load workspace statistics. Check the administrator database connection.",

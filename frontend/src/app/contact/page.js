@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Connect your agent" };
 export default function Contact() {
   const email = process.env.CONTACT_EMAIL;
@@ -36,24 +37,22 @@ export default function Contact() {
           </h2>
           <ol>
             <li>
-              Create a dedicated agent for your business in your workspace. Set
-              its voice, language, business prompt, and fallback rules.
+              <strong>Add your company details.</strong> Set a greeting, tone,
+              and support inbox so the agent represents your business.
             </li>
             <li>
-              Add business documents to that agent’s knowledge base. Keep
-              different companies on separate agents.
+              <strong>Share your knowledge.</strong> Upload FAQs, product
+              guides, opening hours, and policies.
             </li>
             <li>
-              Connect booking, CRM, or human handoff tools if the agent needs to
-              take action.
+              <strong>Choose the handoff.</strong> Tell the agent which team
+              should receive billing questions, technical issues, and other
+              requests.
             </li>
             <li>
-              Import a Twilio number in your workspace and assign your agent for
-              inbound calls.
-            </li>
-            <li>
-              Before enabling outbound calls in this app, configure server
-              credentials and operator access. Live calls are off by default.
+              <strong>Test the experience.</strong> Ask real customer questions
+              and review the answers and sources before connecting your phone
+              line.
             </li>
           </ol>
           <Link href="/try-for-free" className="text-link">
@@ -84,15 +83,10 @@ export default function Contact() {
               Discuss your setup <Icon name="arrow" />
             </a>
           ) : (
-            <div className="contact-note">
-              Contact messaging is not configured yet. You can preview and
-              export your agent brief in the playground.
-            </div>
+            <Link href="/try-for-free" className="button copper">
+              Open your workspace <Icon name="arrow" />
+            </Link>
           )}
-          <small>
-            Operators: set CONTACT_EMAIL on the frontend server to enable
-            enquiries.
-          </small>
         </aside>
       </div>
     </div>

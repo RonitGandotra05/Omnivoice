@@ -1,42 +1,179 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createVoiceStartGuard } from "@/lib/voice-start.mjs";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
+import {
+  studioRequest,
+  runVoiceTool,
+  searchVoiceKnowledge,
+  recordVoiceTranscript,
+} from "@/lib/support/studio-client.mjs";
+import CallerDetails from "@/components/CallerDetails";
 import Icon from "@/components/ui/Icon";
+import Link from "next/link";
+import { serverRequest } from "@/lib/support/studio-client.mjs";
+
+function saveTranscriptSnapshot(value) {
+  if (!value.id || value.recorded) return;
+  value.recorded = true;
+  recordVoiceTranscript(
+    value.id,
+    value.transcript,
+    Math.round((Date.now() - value.started) / 1000),
+  ).catch(() => {
+    value.recorded = false;
+  });
+}
 
 function VoiceSession({ enabled }) {
   const [error, setError] = useState("");
+  const [allowance, setAllowance] = useState(null);
+  const [remaining, setRemaining] = useState(60);
+  const maxSeconds = useRef(60);
+  const refreshAllowance = () =>
+    serverRequest("demo/allowance", null, { method: "GET" })
+      .then(setAllowance)
+      .catch(() =>
+        setAllowance({
+          available: false,
+          error:
+            "Voice demo availability could not be verified. Please try again shortly.",
+        }),
+      );
+  useEffect(() => {
+    refreshAllowance();
+  }, []);
   const [starting, setStarting] = useState(false);
   const [transcript, setTranscript] = useState([]);
+  const [conversationId, setConversationId] = useState("");
+  const [caller, setCaller] = useState(null);
+  const [trackingError, setTrackingError] = useState("");
+  const live = useRef({ id: "", transcript: [], started: 0, recorded: false });
+  const guard = useRef(null);
+  if (!guard.current) guard.current = createVoiceStartGuard();
+  useEffect(
+    () => () => {
+      guard.current.cancel();
+      saveTranscriptSnapshot(live.current);
+    },
+    [],
+  );
   const conversation = useConversation({
-    onMessage: (message) =>
-      setTranscript((t) =>
-        [...t, { role: message.source, text: message.message }].slice(-100),
-      ),
+    onConnect: ({ conversationId }) => {
+      live.current = {
+        id: conversationId,
+        transcript: [],
+        started: Date.now(),
+        recorded: false,
+      };
+      setConversationId(conversationId);
+    },
+    onDisconnect: () => {
+      saveTranscriptSnapshot(live.current);
+      refreshAllowance();
+    },
+    onMessage: (message) => {
+      const entry = { role: message.source, text: message.message };
+      live.current.transcript = [...live.current.transcript, entry].slice(-100);
+      setTranscript(live.current.transcript);
+    },
     onError: () =>
       setError(
         "Voice connection failed. Check the company agent, browser microphone access, and provider configuration.",
       ),
   });
+  useEffect(() => {
+    if (!conversationId) return;
+    const controller = new AbortController();
+    let timer;
+    let failures = 0;
+    const poll = async () => {
+      try {
+        const data = await studioRequest(
+          `callers/${encodeURIComponent(conversationId)}`,
+          { signal: controller.signal },
+        );
+        if (controller.signal.aborted) return;
+        setCaller(data.caller);
+        setTrackingError("");
+        failures = 0;
+      } catch {
+        if (controller.signal.aborted) return;
+        failures += 1;
+        setTrackingError(
+          "Caller details could not be refreshed. The conversation can continue.",
+        );
+      }
+      if (!controller.signal.aborted && conversation.status === "connected")
+        timer = setTimeout(poll, Math.min(15000, 2000 * 2 ** failures));
+    };
+    poll();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [conversationId, conversation.status]);
+  const { status: voiceStatus, endSession } = conversation;
+  useEffect(() => {
+    if (voiceStatus !== "connected") return;
+    const tick = () => {
+      const left = Math.max(
+        0,
+        maxSeconds.current -
+          Math.floor((Date.now() - live.current.started) / 1000),
+      );
+      setRemaining(left);
+      if (!left) endSession();
+    };
+    tick();
+    const timer = setInterval(tick, 500);
+    return () => clearInterval(timer);
+  }, [voiceStatus, endSession]);
   const start = async () => {
-    if (starting || conversation.status !== "disconnected") return;
+    if (
+      !enabled ||
+      !allowance?.available ||
+      conversation.status !== "disconnected"
+    )
+      return;
+    const attempt = guard.current.begin();
+    if (!attempt) return;
     setStarting(true);
     setError("");
     setTranscript([]);
+    setConversationId("");
+    setCaller(null);
+    setTrackingError("");
     try {
-      const response = await fetch("/api/studio/voice/session", {
+      const data = await studioRequest("voice/session", {
         method: "POST",
+        signal: attempt.controller.signal,
       });
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Voice session unavailable");
+      if (!guard.current.current(attempt)) return;
+      maxSeconds.current = data.max_seconds || 60;
+      setRemaining(maxSeconds.current);
+      setAllowance((previous) => ({ ...previous, available: false }));
       await conversation.startSession({
         signedUrl: data.signed_url,
         connectionType: "websocket",
+        clientTools: {
+          support_call: async (values) =>
+            JSON.stringify(await runVoiceTool(values, live.current.id)),
+          search_company_knowledge: async (values) =>
+            JSON.stringify(await searchVoiceKnowledge(values.query)),
+        },
       });
     } catch (err) {
-      setError(err.message);
+      refreshAllowance();
+      if (guard.current.current(attempt))
+        setError(
+          err.name === "TimeoutError"
+            ? "The voice connection timed out. Please try again."
+            : err.message,
+        );
     } finally {
-      setStarting(false);
+      if (guard.current.current(attempt)) setStarting(false);
+      guard.current.finish(attempt);
     }
   };
   return (
@@ -52,10 +189,33 @@ function VoiceSession({ enabled }) {
         sends audio to the voice platform. Calls may use billable provider
         credits.
       </p>
+      <div className="demo-limit-note">
+        <strong>{allowance?.max_seconds || 60}-second voice demo</strong>
+        <p>
+          One voice demo per network and browser every 24 hours. This simulates
+          a support phone call using your microphone; no phone number is
+          required.
+        </p>
+        <Link className="text-link" href="/account">
+          Create an account / sign in
+        </Link>
+      </div>
+      {allowance &&
+        !allowance.available &&
+        conversation.status !== "connected" && (
+          <p role="status">
+            {allowance.error ||
+              (allowance.retry_at
+                ? `Your next demo is available ${new Date(allowance.retry_at).toLocaleString()}.`
+                : "The daily voice allowance has been reserved. Please try again after 24 hours.")}{" "}
+            You can still explore the text preview and company setup.
+          </p>
+        )}
       {conversation.status === "connected" ? (
         <>
           <p role="status">
-            {conversation.isSpeaking ? "Agent speaking…" : "Listening…"}
+            {conversation.isSpeaking ? "Agent speaking…" : "Listening…"} ·{" "}
+            {remaining}s remaining
           </p>
           <button
             className="button dark small"
@@ -68,7 +228,10 @@ function VoiceSession({ enabled }) {
         <button
           className="button outline small"
           disabled={
-            !enabled || starting || conversation.status !== "disconnected"
+            !enabled ||
+            !allowance?.available ||
+            starting ||
+            conversation.status !== "disconnected"
           }
           onClick={start}
         >
@@ -76,9 +239,23 @@ function VoiceSession({ enabled }) {
           <Icon name="phone" />
         </button>
       )}
+      {starting && (
+        <button
+          type="button"
+          className="text-link"
+          onClick={() => {
+            guard.current.cancel();
+            setStarting(false);
+            conversation.endSession();
+          }}
+        >
+          Cancel connection
+        </button>
+      )}
       {!enabled && (
         <small>
-          Load a connected workspace and configure voice to enable voice.
+          Save and publish your workspace, then configure voice to enable this
+          test.
         </small>
       )}
       {error && (
@@ -86,6 +263,19 @@ function VoiceSession({ enabled }) {
           {error}
         </p>
       )}
+      {conversationId && (
+        <>
+          <CallerDetails
+            caller={caller}
+            availability={caller?.availability_at_request}
+          />
+          <small>
+            Updates appear when the agent saves confirmed details using its
+            connected support tool.
+          </small>
+        </>
+      )}
+      {trackingError && <p role="status">{trackingError}</p>}
       {transcript.length > 0 && (
         <details>
           <summary>Live voice transcript</summary>

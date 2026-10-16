@@ -7,7 +7,9 @@ import bcrypt from "bcrypt";
 export async function GET(request) {
   try {
     // Verify authentication
-    const token = request.headers.get("authorization")?.split(" ")[1];
+    const token =
+      request.cookies?.get("auth_token")?.value ||
+      request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -42,7 +44,9 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     // Verify authentication
-    const token = request.headers.get("authorization")?.split(" ")[1];
+    const token =
+      request.cookies?.get("auth_token")?.value ||
+      request.headers.get("authorization")?.split(" ")[1];
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

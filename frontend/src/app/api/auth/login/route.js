@@ -88,7 +88,6 @@ export async function POST(request) {
       // Create the success response first
       const response = NextResponse.json({
         success: true,
-        token: token,
       });
 
       // Set the cookie on the response object

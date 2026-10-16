@@ -24,7 +24,7 @@ export default function Login() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.message || "Sign in failed.");
-      localStorage.setItem("authToken", body.token);
+      localStorage.removeItem("authToken");
       router.push("/admin/dashboard");
     } catch (err) {
       setError(err.message);

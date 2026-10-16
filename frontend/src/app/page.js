@@ -1,7 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import Icon from "@/components/ui/Icon";
-import Waveform from "@/components/ui/Waveform";
+import VoiceInstrument from "@/components/ui/VoiceInstrument";
 const steps = [
   [
     "01",
@@ -17,22 +16,18 @@ const steps = [
   ],
   [
     "03",
-    "Make the connection.",
-    "Connect your phone line through the voice platform when you’re ready to take real conversations.",
+    "Test before you connect.",
+    "Ask customer questions, review the sources, and check handoffs before connecting your phone line.",
     "phone",
   ],
 ];
 export default function Home() {
   return (
     <div className="page-shell">
-      <div className="page-kicker">
-        <span>VOICE AI / WITH A HUMAN TOUCH</span>
-        <span>A BETTER CONVERSATION STARTS HERE ↘</span>
-      </div>
       <section className="hero">
         <div className="hero-copy">
           <p className="eyebrow">
-            <span className="status-dot" /> OMNIVOICE / AGENT STUDIO
+            <span className="status-dot" /> AI CUSTOMER SUPPORT
           </p>
           <h1>
             Your company.
@@ -57,50 +52,10 @@ export default function Home() {
             </Link>
           </div>
           <p className="microcopy">
-            No API key needed to explore. No phone call made.
+            Try it with sample documents. No phone call required.
           </p>
         </div>
-        <div className="hero-visual">
-          <div className="visual-top">
-            <span>OV / THE ART OF LISTENING</span>
-            <span>VOL. 01</span>
-          </div>
-          <Image
-            width={1254}
-            height={1254}
-            sizes="(max-width: 760px) 100vw, 50vw"
-            priority
-            className="sculpture"
-            src="/voice-sculpture.png"
-            alt="Sculptural copper and amber ring with a luminous voice filament"
-          />
-          <div className="visual-caption">
-            <span>MADE TO CONNECT.</span>
-            <span>↗</span>
-          </div>
-          <div className="conversation-float">
-            <div className="call-label">
-              <span className="status-dot" /> A MOMENT IN CONVERSATION{" "}
-              <span className="tag">PREVIEW</span>
-            </div>
-            <Waveform />
-            <p>
-              “Hi, I’m your AI assistant.
-              <br />
-              How can I help today?”
-            </p>
-            <div className="call-bottom">
-              <span>YOUR BUSINESS. YOUR VOICE.</span>
-              <Icon name="phone" />
-            </div>
-          </div>
-        </div>
-        <div className="hero-bottom">
-          <span>LESS COMPLEXITY. MORE CONNECTION.</span>
-          <span>
-            ONE VOICE PLATFORM <Icon name="right" /> OMNIVOICE AGENTS
-          </span>
-        </div>
+        <VoiceInstrument />
       </section>
       <section id="how-it-works" className="workflow" aria-label="How it works">
         {steps.map(([n, title, text, icon]) => (
@@ -165,9 +120,9 @@ export default function Home() {
         <div>
           <p className="eyebrow">START WITH A CONVERSATION</p>
           <h2>
-            Your next great hire
+            Support that knows
             <br />
-            could be a <em>voice.</em>
+            <em>your business.</em>
           </h2>
           <p>
             Test the flow. Shape the personality. Connect when you’re ready.

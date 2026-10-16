@@ -39,7 +39,7 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="nav-actions">
-          <Link href="/admin/login" className="sign-in">
+          <Link href="/account" className="sign-in">
             Sign in
           </Link>
           <Link href="/try-for-free" className="button dark small">
@@ -63,7 +63,7 @@ export default function Navbar() {
           className="mobile-nav"
           aria-label="Mobile navigation"
         >
-          {[...links, ["Sign in", "/admin/login"], ["Contact", "/contact"]].map(
+          {[...links, ["Sign in", "/account"], ["Contact", "/contact"]].map(
             ([label, url]) => (
               <Link key={url} href={url} onClick={() => setOpen(false)}>
                 {label}

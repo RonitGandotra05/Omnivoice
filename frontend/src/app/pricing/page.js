@@ -61,7 +61,7 @@ export default function Pricing() {
           <em>Clear expectations.</em>
         </h1>
         <p>
-          Explore for free. Plan your workspace. Keep provider usage in view.
+          Explore for free. Plan your workspace. Estimate conversation costs.
         </p>
         <span className="pricing-disclosure">
           Proposed app plans · Paid billing is not active
@@ -145,7 +145,7 @@ export default function Pricing() {
             />
           </label>
           <div className="estimate">
-            <span>Estimated provider usage</span>
+            <span>Estimated conversation cost</span>
             <strong>
               $
               {(minutes * rate).toLocaleString("en-US", {
@@ -165,8 +165,8 @@ export default function Pricing() {
         <p className="eyebrow">A FEW THINGS TO KNOW</p>
         {[
           [
-            "Can I try it without an API key?",
-            "Yes. The studio previews answers from your company documents without a microphone, phone number, or provider account. Live voice requires a connected workspace.",
+            "Can I try it before connecting a phone line?",
+            "Yes. The studio previews answers from your company documents before you connect a microphone or phone number. Live voice requires a connected workspace.",
           ],
           [
             "Does the app replace my phone carrier?",
