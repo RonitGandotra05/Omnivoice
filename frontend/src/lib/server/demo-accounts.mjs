@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
-import { hash, compare } from "bcrypt";
+import { hash, compare } from "bcryptjs";
 import { databasePool, rateLimit } from "./support-store.mjs";
 import {
   setupDemoDatabase,

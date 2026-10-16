@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "../../../../../lib/db";
 import { verifyAdminSession } from "../../../../../lib/admin-session";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 // GET /api/admin/users/[id] - Get a specific user
 export async function GET(request, { params }) {

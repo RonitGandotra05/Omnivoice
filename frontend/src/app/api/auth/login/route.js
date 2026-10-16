@@ -2,7 +2,7 @@ import { sameOrigin, boundedBody } from "@/lib/request-security.mjs";
 import { loginLimit } from "@/lib/login-limit";
 import { NextResponse } from "next/server";
 import * as db from "../../../../lib/db";
-import { compare } from "bcrypt";
+import { compare } from "bcryptjs";
 import { signAuthToken } from "@/lib/auth";
 
 export async function POST(request) {

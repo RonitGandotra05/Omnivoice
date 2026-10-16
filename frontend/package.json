@@ -20,7 +20,7 @@
     "@heroicons/react": "^2.2.0",
     "@js-temporal/polyfill": "^0.5.1",
     "@tesseract.js-data/eng": "^1.0.0",
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.7",
     "fflate": "^0.8.3",
     "jose": "^6.0.0",

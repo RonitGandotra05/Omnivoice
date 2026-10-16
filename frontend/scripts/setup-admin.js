@@ -1,7 +1,7 @@
 // Provision a legacy administrator without default or hardcoded credentials.
 require("dotenv").config({ path: ".env.local" });
 const { Pool } = require("pg");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 async function main() {
   const { NEON_DB_CONNECTION_STRING, ADMIN_EMAIL, ADMIN_PASSWORD } =
     process.env;
