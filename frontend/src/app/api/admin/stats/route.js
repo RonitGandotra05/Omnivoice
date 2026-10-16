@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { pool, query } from "../../../../lib/db";
-import { verifyAuthToken } from "../../../../lib/auth";
+import { pool } from "../../../../lib/db";
+import { verifyAdminSession } from "../../../../lib/admin-session";
 
 export async function GET(request) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await verifyAuthToken(token);
+    const user = await verifyAdminSession(token);
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -59,7 +59,7 @@ export async function GET(request) {
       client.release();
     }
   } catch (error) {
-    console.error("Error fetching admin stats:", error);
+    console.error("Error fetching admin stats:", { code: error.code });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

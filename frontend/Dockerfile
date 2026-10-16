@@ -1,0 +1,19 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY frontend/package*.json ./
+COPY frontend/scripts/copy-parser-assets.mjs ./scripts/copy-parser-assets.mjs
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build && npm prune --omit=dev
+
+FROM node:22-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build --chown=node:node /app/package*.json ./
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/.next ./.next
+COPY --from=build --chown=node:node /app/public ./public
+COPY --from=build --chown=node:node /app/next.config.mjs ./next.config.mjs
+USER node
+EXPOSE 3000
+CMD ["npm", "start", "--", "--hostname", "0.0.0.0"]

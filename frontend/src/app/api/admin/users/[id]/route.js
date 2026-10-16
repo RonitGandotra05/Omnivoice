@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "../../../../../lib/db";
-import { verifyAuthToken } from "../../../../../lib/auth";
+import { verifyAdminSession } from "../../../../../lib/admin-session";
 import bcrypt from "bcrypt";
 
 // GET /api/admin/users/[id] - Get a specific user
@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUser = await verifyAuthToken(token);
+    const authUser = await verifyAdminSession(token);
     if (!authUser || !authUser.isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized - Admin privileges required" },
@@ -39,7 +39,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(result.rows[0]);
   } catch (error) {
-    console.error("Error fetching user:", error);
+    console.error("Error fetching user:", { code: error.code });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -58,7 +58,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUser = await verifyAuthToken(token);
+    const authUser = await verifyAdminSession(token);
     if (!authUser || !authUser.isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized - Admin privileges required" },
@@ -141,7 +141,7 @@ export async function PUT(request, { params }) {
 
     return NextResponse.json(result.rows[0]);
   } catch (error) {
-    console.error("Error updating user:", error);
+    console.error("Error updating user:", { code: error.code });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -160,7 +160,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUser = await verifyAuthToken(token);
+    const authUser = await verifyAdminSession(token);
     if (!authUser || !authUser.isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized - Admin privileges required" },
@@ -187,7 +187,7 @@ export async function DELETE(request, { params }) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    console.error("Error deleting user:", { code: error.code });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

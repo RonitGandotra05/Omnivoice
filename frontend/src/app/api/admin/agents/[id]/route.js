@@ -41,7 +41,7 @@ export async function GET(request, { params }) {
       client.release();
     }
   } catch (error) {
-    console.error("Error fetching agent details:", error);
+    console.error("Error fetching agent details:", { code: error.code });
     return NextResponse.json(
       { error: "Failed to fetch agent details" },
       { status: 500 },

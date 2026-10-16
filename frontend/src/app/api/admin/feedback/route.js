@@ -36,7 +36,7 @@ export async function GET(request) {
       client.release();
     }
   } catch (error) {
-    console.error("Error fetching feedback:", error);
+    console.error("Error fetching feedback:", { code: error.code });
     return NextResponse.json(
       { error: "Failed to fetch feedback" },
       { status: 500 },

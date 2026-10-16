@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "../../../../lib/db";
-import { verifyAuthToken } from "../../../../lib/auth";
+import { verifyAdminSession } from "../../../../lib/admin-session";
 import bcrypt from "bcrypt";
 
 // GET /api/admin/users - Get all users
@@ -12,7 +12,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await verifyAuthToken(token);
+    const user = await verifyAdminSession(token);
     if (!user || !user.isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized - Admin privileges required" },
@@ -30,7 +30,7 @@ export async function GET(request) {
 
     return NextResponse.json(result.rows);
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("Error fetching users:", { code: error.code });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -47,7 +47,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authUser = await verifyAuthToken(token);
+    const authUser = await verifyAdminSession(token);
     if (!authUser || !authUser.isAdmin) {
       return NextResponse.json(
         { error: "Unauthorized - Admin privileges required" },
@@ -102,7 +102,7 @@ export async function POST(request) {
 
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error) {
-    console.error("Error creating user:", error);
+    console.error("Error creating user:", { code: error.code });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

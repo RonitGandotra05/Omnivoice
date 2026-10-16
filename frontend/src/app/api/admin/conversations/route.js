@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyAuthToken } from "../../../../lib/auth";
+import { verifyAdminSession } from "../../../../lib/admin-session";
 import { pool } from "../../../../lib/db";
 
 export async function GET(request) {
@@ -9,7 +9,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = verifyAuthToken(token);
+    const decoded = await verifyAdminSession(token);
     if (!decoded) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
@@ -37,7 +37,7 @@ export async function GET(request) {
       client.release();
     }
   } catch (error) {
-    console.error("Error fetching conversations:", error);
+    console.error("Error fetching conversations:", { code: error.code });
     return NextResponse.json(
       { error: "Failed to fetch conversations" },
       { status: 500 },

@@ -37,7 +37,7 @@ export async function GET(request) {
       client.release();
     }
   } catch (error) {
-    console.error("Error fetching performance data:", error);
+    console.error("Error fetching performance data:", { code: error.code });
     return NextResponse.json(
       { error: "Failed to fetch performance data" },
       { status: 500 },

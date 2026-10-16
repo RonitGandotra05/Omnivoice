@@ -21,7 +21,7 @@ export const authOptions = {
       },
       issuer: "https://www.linkedin.com",
       jwks_endpoint: "https://www.linkedin.com/oauth/openid/jwks",
-      profile(profile, tokens) {
+      profile(profile) {
         const defaultImage =
           "https://cdn-icons-png.flaticon.com/512/174/174857.png";
         return {
@@ -37,48 +37,22 @@ export const authOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account }) {
       // Intentionally passing down user object if present
-      // When user logs in, we'll sync with FastAPI
+      // Account provisioning can be added through the optional PostgreSQL adapter.
       if (user && account) {
         token.provider = account.provider;
         token.sso_id = user.id;
 
-        try {
-          // Sync with our backend
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/auth/sso-login`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.INTEGRATION_API_KEY || ""}`,
-              },
-              body: JSON.stringify({
-                email: user.email,
-                name: user.name,
-                provider: account.provider,
-                sso_id: user.id,
-              }),
-            },
-          );
-
-          if (res.ok) {
-            const data = await res.json();
-            // Store the FastAPI access token in the NextAuth JWT
-            token.accessToken = data.access_token;
-          } else {
-            console.error("Failed to sync with backend:", await res.text());
-          }
-        } catch (error) {
-          console.error("Backend SSO Sync Error:", error);
-        }
+        token.name = user.name;
+        token.email = user.email;
+        token.isAdmin = false;
       }
       return token;
     },
-    async session({ session, token }) {
-      // Pass the backend access token to the client session
-      session.accessToken = token.accessToken;
+    async session({ session }) {
+      // External sign-in never grants administrator privileges.
+      session.user.isAdmin = false;
       return session;
     },
   },

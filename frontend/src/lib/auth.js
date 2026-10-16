@@ -1,6 +1,11 @@
 import { jwtVerify, SignJWT } from "jose";
 const key = () => {
   if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
+  if (
+    process.env.JWT_SECRET.length < 32 ||
+    /change-me|replace-with|example/i.test(process.env.JWT_SECRET)
+  )
+    throw new Error("JWT_SECRET must be a strong private value");
   return new TextEncoder().encode(process.env.JWT_SECRET);
 };
 export async function signAuthToken(user) {
