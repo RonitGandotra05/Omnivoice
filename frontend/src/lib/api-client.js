@@ -1,10 +1,9 @@
 /**
- * API Client - Connects Next.js frontend to FastAPI backend.
+ * API client for same-origin Next.js routes.
  * All backend calls go through this module.
  */
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = '';
 
 /**
  * Base fetch wrapper with error handling
