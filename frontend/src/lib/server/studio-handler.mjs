@@ -67,6 +67,10 @@ export const supportTool = {
         "True only after permission to save contact details",
         "boolean",
       ),
+      human_requested: field(
+        "True immediately when the caller asks for a human. Save their request even if contact details are missing.",
+        "boolean",
+      ),
       callback_requested: field(
         "True if caller agreed to request a callback",
         "boolean",
@@ -354,7 +358,11 @@ export function createStudioHandler({
         await limit(env.SUPPORT_TENANT_ID, "native", 180, env);
         const raw = await boundedBody(request, 20000);
         const body = JSON.parse(new TextDecoder().decode(raw));
-        if (body.action === "handoff")
+        if (
+          body.action === "handoff" ||
+          body.callback_requested ||
+          body.human_requested
+        )
           await limit(env.SUPPORT_TENANT_ID, "native-handoff", 30, env);
         const result = await store(
           env.SUPPORT_TENANT_ID,

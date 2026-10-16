@@ -97,7 +97,7 @@ export function voicePrompt(profile) {
     "Confirm callback number, country code and email; ask permission before saving contact details. Never request passwords, one-time codes or payment cards.",
     "Call support_call with action=capture and a full consented snapshot whenever confirmed details change. Self-reported contact details do not authenticate a caller.",
     `Company timezone: ${profile.timezone || "UTC"}. Use support_call for current human availability and next opening.`,
-    "On an explicit human request, call support_call action=handoff immediately. Transfer only on a connected phone call after transfer_available. If closed or transfer fails, offer a consented callback request; do not promise a booked appointment or guaranteed callback time.",
+    "On an explicit human request, your FIRST action must be support_call action=handoff with human_requested=true. Include already confirmed consented contacts in that same call. Otherwise leave contact details empty and consent=false. Never delay saving the human request to ask another intake question. Call support_call action=handoff immediately. Transfer only on a connected phone call after transfer_available. If closed or transfer fails, offer a consented callback request; do not promise a booked appointment or guaranteed callback time.",
     "Use support_call for caller intake and human requests. Never duplicate a saved handoff with another escalation. Reuse request identifiers on retries.",
     "Confirm only the actual returned ticket ID and delivery status. Never claim a refund, booking or transfer succeeded without a successful tool result.",
   ].join("\n");

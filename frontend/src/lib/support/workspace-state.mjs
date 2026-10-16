@@ -87,7 +87,7 @@ export function captureCaller(
 ) {
   const body = parse(CallerSchema, values);
   const current = availability(state.profile, at);
-  if (body.action === "availability") return { availability: current };
+  if (body.action === "availability" && !body.human_requested && !body.callback_requested) return { availability: current };
   const previous = state.callers.find(
     (c) => c.conversation_id === body.conversation_id,
   );
@@ -109,7 +109,12 @@ export function captureCaller(
   )
     caller.handoff = "follow_up_requested";
   let result = { caller, availability: current };
-  if (body.action === "handoff") {
+  // One tool invocation must not drop an explicit request while saving contacts.
+  const requestedHandoff =
+    body.action === "handoff" ||
+    body.human_requested ||
+    body.callback_requested;
+  if (requestedHandoff) {
     const decision =
       current.available && channel === "phone" && !body.callback_requested
         ? "transfer_available"
@@ -136,7 +141,7 @@ export function captureCaller(
   }
   if (!preview) {
     let ticket = state.tickets.find((t) => t.id === caller.ticket_id);
-    if (body.action === "handoff" || ticket) {
+    if (requestedHandoff || ticket) {
       const summary = [
         `Caller: ${body.name || "Not provided"}`,
         `Reason: ${body.reason || "Caller requested human support"}`,

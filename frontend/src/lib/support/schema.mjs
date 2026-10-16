@@ -101,6 +101,7 @@ export const CallerSchema = z
     reason: text(0, 2000).default(""),
     consent: z.boolean().default(false),
     callback_requested: z.boolean().default(false),
+    human_requested: z.boolean().default(false),
     callback_preference: text(0, 300).default(""),
   })
   .refine(
