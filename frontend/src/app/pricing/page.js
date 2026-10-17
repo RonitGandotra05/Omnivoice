@@ -182,10 +182,7 @@ export default function Pricing() {
           ],
         ].map(([q, a]) => (
           <details key={q}>
-            <summary>
-              {q}
-              <span>+</span>
-            </summary>
+            <summary>{q}</summary>
             <p>{a}</p>
           </details>
         ))}

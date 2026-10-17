@@ -61,6 +61,29 @@ export default function SupportStudio() {
   const readiness = workspaceReadiness(profile, documents);
   const uploadRef = useRef(null);
   const operation = useRef(false);
+  const sidebarNav = useRef(null);
+  useEffect(() => {
+    const nav = sidebarNav.current;
+    if (!nav) return;
+    const revealActive = () => {
+      const active = nav.querySelector('[aria-current="step"]');
+      if (!active || nav.scrollWidth <= nav.clientWidth + 1) return;
+      const bounds = nav.getBoundingClientRect();
+      const selected = active.getBoundingClientRect();
+      if (selected.left < bounds.left + 4)
+        nav.scrollTo({
+          left: nav.scrollLeft + selected.left - bounds.left - 4,
+        });
+      else if (selected.right > bounds.right - 4)
+        nav.scrollTo({
+          left: nav.scrollLeft + selected.right - bounds.right + 4,
+        });
+    };
+    revealActive();
+    const observer = new ResizeObserver(revealActive);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [section]);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -437,7 +460,7 @@ export default function SupportStudio() {
               </small>
             </div>
           </div>
-          <nav aria-label="Workspace sections">
+          <nav ref={sidebarNav} aria-label="Workspace sections">
             {sections.map(([id, n, label, desc]) => (
               <button
                 key={id}
@@ -942,7 +965,11 @@ export default function SupportStudio() {
                     <summary>Test with voice</summary>
                     <VoiceTest
                       enabled={
-                        connected && !!status?.voice_configured && !dirty && publishState?.status === "complete" && !publishState?.result?.needs_publish
+                        connected &&
+                        !!status?.voice_configured &&
+                        !dirty &&
+                        publishState?.status === "complete" &&
+                        !publishState?.result?.needs_publish
                       }
                     />
                   </details>

@@ -138,10 +138,8 @@ export default function KnowledgeChecks({
                       })
                     }
                   >
-                    <option value="answer">
-                      Answer from company documents
-                    </option>
-                    <option value="handoff">Offer a human handoff</option>
+                    <option value="answer">Knowledge answer</option>
+                    <option value="handoff">Human handoff</option>
                   </select>
                 </label>
                 {item.expect_escalation ? (

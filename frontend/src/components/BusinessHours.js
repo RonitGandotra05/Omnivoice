@@ -57,30 +57,38 @@ export default function BusinessHours({ profile, update }) {
         <>
           {windows.map((w, i) => (
             <div className="hours-row" key={i}>
-              <select
-                aria-label={`Shift ${i + 1} day`}
-                value={w.day}
-                onChange={(e) => edit(i, "day", Number(e.target.value))}
-              >
-                {days.map((day, n) => (
-                  <option key={day} value={n}>
-                    {day}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="time"
-                aria-label={`Shift ${i + 1} opens`}
-                value={w.opens}
-                onChange={(e) => edit(i, "opens", e.target.value)}
-              />
-              <span>to</span>
-              <input
-                type="time"
-                aria-label={`Shift ${i + 1} closes`}
-                value={w.closes}
-                onChange={(e) => edit(i, "closes", e.target.value)}
-              />
+              <label className="hours-day">
+                Day
+                <select
+                  aria-label={`Shift ${i + 1} day`}
+                  value={w.day}
+                  onChange={(e) => edit(i, "day", Number(e.target.value))}
+                >
+                  {days.map((day, n) => (
+                    <option key={day} value={n}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="hours-time">
+                Opens
+                <input
+                  type="time"
+                  aria-label={`Shift ${i + 1} opens`}
+                  value={w.opens}
+                  onChange={(e) => edit(i, "opens", e.target.value)}
+                />
+              </label>
+              <label className="hours-time">
+                Closes
+                <input
+                  type="time"
+                  aria-label={`Shift ${i + 1} closes`}
+                  value={w.closes}
+                  onChange={(e) => edit(i, "closes", e.target.value)}
+                />
+              </label>
               <button
                 type="button"
                 className="text-link"
