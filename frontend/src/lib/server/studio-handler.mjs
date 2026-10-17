@@ -272,7 +272,7 @@ export function createStudioHandler({
         },
       });
     try {
-      if (!sameOrigin(request))
+      if (!sameOrigin(request, env))
         throw new ApiError("Cross-origin requests are not allowed", 403);
       const method = request.method;
       const publicStatus = path === "status" && method === "GET";
@@ -465,6 +465,9 @@ export function createStudioHandler({
         cookie = session.cookie;
         const owner = session.owner;
         const protectedDemo = protectionEnabled(env);
+        const voiceAccount = protectedDemo
+          ? await demoAccount(request, env)
+          : null;
         const ip = protectedDemo
           ? demoIdentities(request, owner, env).ip
           : "shared-ingress";
@@ -492,6 +495,7 @@ export function createStudioHandler({
               url === "/agents/create" ? "agent" : "document",
               opts.body?.text?.length || 0,
               env,
+              voiceAccount,
             );
           return providerRequest(url, { ...opts, fetchImpl, env });
         };
@@ -762,12 +766,7 @@ export function createStudioHandler({
           // Reserve the entire allowance before contacting the provider. Ambiguous failures
           // consume it too, so retries cannot mint extra credentials after a timeout.
           const allowance = protectedDemo
-            ? await reserveDemo(
-                request,
-                owner,
-                env,
-                await demoAccount(request, env),
-              )
+            ? await reserveDemo(request, owner, env, voiceAccount, grant.agent_id)
             : { max_seconds: 300 };
           if (protectedDemo)
             await provider(`/agents/${id(grant.agent_id)}`, {

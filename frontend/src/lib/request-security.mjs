@@ -1,11 +1,11 @@
-export function sameOrigin(request) {
+export function sameOrigin(request, env = process.env) {
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return true;
   const supplied = request.headers.get("origin");
   if (!supplied) return true; // Server-to-server callers still require authentication.
   try {
     return (
       new URL(supplied).origin ===
-      new URL(process.env.PUBLIC_APP_URL || request.url).origin
+      new URL(env.PUBLIC_APP_URL || request.url).origin
     );
   } catch {
     return false;

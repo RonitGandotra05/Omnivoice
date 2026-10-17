@@ -3,9 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Icon from "@/components/ui/Icon";
+import { useAccount } from "@/components/AccountPreferences";
 export default function Navbar() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const { account, setTheme } = useAccount();
   const links = [
     ["Overview", "/"],
     ["Agent studio", "/try-for-free"],
@@ -39,8 +41,33 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="nav-actions">
-          <Link href="/account" className="sign-in">
-            Sign in
+          <button
+            type="button"
+            className="theme-toggle"
+            aria-label="Toggle dark mode"
+            onClick={() =>
+              setTheme(
+                document.documentElement.dataset.theme === "dark"
+                  ? "light"
+                  : "dark",
+              )
+            }
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
+              <path d="M20.5 13.1A8.5 8.5 0 0 1 10.9 3.5 8.5 8.5 0 1 0 20.5 13.1Z" />
+            </svg>
+          </button>
+          <Link
+            href={account ? "/account/settings" : "/account"}
+            className="sign-in"
+          >
+            {account ? "Account" : "Sign in"}
           </Link>
           <Link href="/try-for-free" className="button dark small">
             Build an agent <Icon name="arrow" />
@@ -63,14 +90,19 @@ export default function Navbar() {
           className="mobile-nav"
           aria-label="Mobile navigation"
         >
-          {[...links, ["Sign in", "/account"], ["Contact", "/contact"]].map(
-            ([label, url]) => (
-              <Link key={url} href={url} onClick={() => setOpen(false)}>
-                {label}
-                <Icon name="right" />
-              </Link>
-            ),
-          )}
+          {[
+            ...links,
+            [
+              account ? "Account settings" : "Sign in",
+              account ? "/account/settings" : "/account",
+            ],
+            ["Contact", "/contact"],
+          ].map(([label, url]) => (
+            <Link key={url} href={url} onClick={() => setOpen(false)}>
+              {label}
+              <Icon name="right" />
+            </Link>
+          ))}
         </nav>
       )}
     </header>

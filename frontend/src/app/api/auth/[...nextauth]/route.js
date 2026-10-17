@@ -1,68 +1,42 @@
 import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import AppleProvider from "next-auth/providers/apple";
-import LinkedInProvider from "next-auth/providers/linkedin";
-
-export const authOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    }),
-    AppleProvider({
-      clientId: process.env.APPLE_ID || "",
-      clientSecret: process.env.APPLE_SECRET || "",
-    }),
-    LinkedInProvider({
-      clientId: process.env.LINKEDIN_CLIENT_ID || "",
-      clientSecret: process.env.LINKEDIN_CLIENT_SECRET || "",
-      authorization: {
-        params: { scope: "openid profile email" },
+import { createAccountAuth } from "@/lib/server/account-auth.mjs";
+import { demoIdentities } from "@/lib/server/demo-protection.mjs";
+import { browserOwner } from "@/lib/server/provider.mjs";
+import { rateLimit } from "@/lib/server/support-store.mjs";
+import { boundedBody } from "@/lib/request-security.mjs";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+async function handle(request, context) {
+  try {
+    if (request.method === "POST")
+      await boundedBody(request.clone(), 16 * 1024);
+    const path = new URL(request.url).pathname;
+    if (
+      request.method === "POST" &&
+      /\/signin\/(google|apple|github)$/.test(path)
+    ) {
+      const identity = demoIdentities(request, browserOwner(request).owner);
+      await rateLimit(identity.ip, "oauth-signin", 10);
+    }
+    const response = await NextAuth(createAccountAuth(request))(
+      request,
+      context,
+    );
+    // A completed social sign-in must not leave an older manual session selected.
+    if (/\/callback\/(google|apple|github)$/.test(path))
+      response.headers.append(
+        "Set-Cookie",
+        `ov_account=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`,
+      );
+    return response;
+  } catch (error) {
+    return Response.json(
+      { error: "Sign-in is temporarily unavailable. Please try again later." },
+      {
+        status: error.status || 503,
+        headers: { "Cache-Control": "private, no-store" },
       },
-      issuer: "https://www.linkedin.com",
-      jwks_endpoint: "https://www.linkedin.com/oauth/openid/jwks",
-      profile(profile) {
-        const defaultImage =
-          "https://cdn-icons-png.flaticon.com/512/174/174857.png";
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture || defaultImage,
-        };
-      },
-    }),
-  ],
-  session: {
-    strategy: "jwt",
-  },
-  callbacks: {
-    async jwt({ token, user, account }) {
-      // Intentionally passing down user object if present
-      // Account provisioning can be added through the optional PostgreSQL adapter.
-      if (user && account) {
-        token.provider = account.provider;
-        token.sso_id = user.id;
-
-        token.name = user.name;
-        token.email = user.email;
-        token.isAdmin = false;
-      }
-      return token;
-    },
-    async session({ session }) {
-      // External sign-in never grants administrator privileges.
-      session.user.isAdmin = false;
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/admin/login",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
-};
-
-const handler = NextAuth(authOptions);
-
-// Next.js App Router exports
-export { handler as GET, handler as POST };
+    );
+  }
+}
+export { handle as GET, handle as POST };

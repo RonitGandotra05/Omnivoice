@@ -51,14 +51,16 @@ npm start -- --hostname 127.0.0.1
 
 ## Bring your voice
 
-Set the server-side **`ELEVENLABS_API_KEY`** in `frontend/.env.local` or the hosting environment. Save your workspace, review OCR, then select **Publish knowledge**. Start a voice conversation after publication completes. Each browser receives a private workspace agent and owner-bound signed session; provider credentials stay on the server. Public demos reserve one **60-second call per IP and browser every rolling 24 hours**, backed by Neon. Failed connection attempts consume that reservation to prevent replay.
+Set the server-side **`ELEVENLABS_API_KEY`** in `frontend/.env.local` or the hosting environment. Save your workspace, review OCR, then select **Publish knowledge**. Start a voice conversation after publication completes. Each browser receives a private workspace agent and owner-bound signed session; provider credentials stay on the server. Guests receive **one minute**, and verified accounts receive **up to 10 minutes per rolling 24 hours**, backed by Neon. Budgets are shared across account, network and browser; previous guest usage counts toward the account budget. The full remaining allowance is reserved at conversation start, including on early hang-up or connection failure, to prevent replay.
 
 | Mode | Storage | Available operations |
 | :--- | :--- | :--- |
 | **Browser workspace · default** | IndexedDB on this device | Knowledge, checks, caller details, browser transcripts, local callback queue, configured live browser demo. |
 | **Connected company · optional** | Encrypted PostgreSQL / Neon | Shared records, authenticated server API, native phone tools, signed post-call history and SMTP outbox. |
 
-Use `DATABASE_URL` or `NEON_DB_CONNECTION_STRING` when you are ready for shared storage. The new PostgreSQL adapter is independent of the retained Python tables. It uses verified TLS, tenant-bound encryption, transactions and shared quotas. Public demo limits and trial accounts use separate `ov_demo_*` tables, while documents and caller records remain in IndexedDB. Account creation never resets the IP allowance or grants administrator access. Longer trials require explicit account approval. Email and telephone integrations stay disabled.
+Use `DATABASE_URL` or `NEON_DB_CONNECTION_STRING` when you are ready for shared storage. The new PostgreSQL adapter is independent of the retained Python tables. It uses verified TLS, tenant-bound encryption, transactions and shared quotas. Public demo limits and trial accounts use separate `ov_demo_*` tables, while documents and caller records remain in IndexedDB. Accounts use email/password or configured Google, Apple and GitHub sign-in. One normalized email maps to one account; different sign-in methods are never silently linked. Account creation never resets the network allowance or grants administrator access. Settings include name, light/dark/device appearance, password change and session revocation. Support email and telephone integrations stay disabled by default.
+
+**[Account providers, verification and setup →](docs/accounts.md)**
 
 **[Deployment, environment variables and migration guide →](docs/nextjs-migration.md)**
 

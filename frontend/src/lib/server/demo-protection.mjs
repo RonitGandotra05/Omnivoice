@@ -71,6 +71,8 @@ export async function setupDemoDatabase(env = process.env) {
       account_id UUID, duration_seconds INTEGER NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW()+INTERVAL '24 hours'));
     CREATE INDEX IF NOT EXISTS ov_demo_sessions_expiry ON ov_demo_sessions(expires_at);
+    ALTER TABLE ov_demo_sessions ADD COLUMN IF NOT EXISTS provider_agent_id TEXT;
+    CREATE INDEX IF NOT EXISTS ov_demo_sessions_agent ON ov_demo_sessions(provider_agent_id,expires_at);
     CREATE TABLE IF NOT EXISTS ov_demo_operations (
       subject TEXT NOT NULL, day DATE NOT NULL DEFAULT CURRENT_DATE, operation TEXT NOT NULL,
       count INTEGER NOT NULL DEFAULT 0, characters BIGINT NOT NULL DEFAULT 0,
@@ -79,6 +81,20 @@ export async function setupDemoDatabase(env = process.env) {
       id UUID PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
       active BOOLEAN NOT NULL DEFAULT TRUE, extended_access BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    ALTER TABLE ov_demo_accounts ALTER COLUMN password_hash DROP NOT NULL;
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'system';
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS ov_demo_accounts_email_normalized ON ov_demo_accounts(LOWER(email));
+    CREATE TABLE IF NOT EXISTS ov_account_identities (
+      provider TEXT NOT NULL, provider_subject TEXT NOT NULL,
+      account_id UUID NOT NULL REFERENCES ov_demo_accounts(id) ON DELETE CASCADE,
+      PRIMARY KEY(provider,provider_subject), UNIQUE(account_id,provider));
+    CREATE TABLE IF NOT EXISTS ov_account_tokens (
+      token_hash TEXT PRIMARY KEY, account_id UUID NOT NULL REFERENCES ov_demo_accounts(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(account_id,purpose));
   `,
     )
     .catch((e) => {
@@ -114,15 +130,26 @@ export async function demoAllowance(
   const identities = demoIdentities(request, owner, env);
   await setupDemoDatabase(env);
   const r = await databasePool(env).query(
-    `SELECT MAX(expires_at) AS retry_at FROM ov_demo_sessions
+    `SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds, MAX(expires_at) AS retry_at FROM ov_demo_sessions
     WHERE expires_at>NOW() AND (ip_hash=$1 OR browser_hash=$2 OR ($3::uuid IS NOT NULL AND account_id=$3))`,
     [identities.ip, identities.browser, account?.id || null],
   );
-  const retry = r.rows[0]?.retry_at;
+  return allowanceFromUsage(r.rows[0], account);
+}
+export function allowanceFromUsage(usage, account) {
+  const budget = account?.email_verified === true ? 600 : 60;
+  const used = Number(usage?.used_seconds) || 0;
+  const remaining = Math.max(0, budget - used);
   return {
-    available: !retry,
-    retry_at: retry ? new Date(retry).toISOString() : null,
-    max_seconds: account?.extended_access === true ? 180 : 60,
+    available: remaining > 0,
+    retry_at:
+      !remaining && usage?.retry_at
+        ? new Date(usage.retry_at).toISOString()
+        : null,
+    max_seconds: remaining,
+    budget_seconds: budget,
+    used_seconds: used,
+    verification_required: !!account && !account.email_verified,
   };
 }
 export async function reserveDemo(
@@ -130,17 +157,36 @@ export async function reserveDemo(
   owner,
   env = process.env,
   account = null,
+  agentId = null,
 ) {
   const identities = demoIdentities(request, owner, env);
   return locked(env, async (db) => {
+    if (agentId) {
+      const prior = await db.query(
+        "SELECT 1 FROM ov_demo_sessions WHERE provider_agent_id=$1 AND expires_at>NOW() LIMIT 1",
+        [agentId],
+      );
+      if (prior.rowCount)
+        throw new ApiError(
+          "Publish your agent again before starting another demo. Your remaining time has not been reserved.",
+          409,
+        );
+    }
+    if (account?.email_verified === true)
+      await db.query(
+        `UPDATE ov_demo_sessions SET account_id=$3 WHERE expires_at>NOW()
+         AND account_id IS NULL AND (ip_hash=$1 OR browser_hash=$2)`,
+        [identities.ip, identities.browser, account.id],
+      );
     const active = await db.query(
-      `SELECT 1 FROM ov_demo_sessions WHERE expires_at>NOW()
-      AND (ip_hash=$1 OR browser_hash=$2 OR ($3::uuid IS NOT NULL AND account_id=$3)) LIMIT 1`,
+      `SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds, MAX(expires_at) AS retry_at FROM ov_demo_sessions WHERE expires_at>NOW()
+      AND (ip_hash=$1 OR browser_hash=$2 OR ($3::uuid IS NOT NULL AND account_id=$3))`,
       [identities.ip, identities.browser, account?.id || null],
     );
-    if (active.rowCount)
+    const allowance = allowanceFromUsage(active.rows[0], account);
+    if (!allowance.available)
       throw new ApiError(
-        "This network or browser has used its daily voice demo. Try again after 24 hours.",
+        "This account, network or browser has used its daily voice allowance. Try again after 24 hours.",
         429,
       );
     const total = await db.query(
@@ -155,16 +201,17 @@ export async function reserveDemo(
         "Today’s voice demo capacity has been reached. Please try again tomorrow.",
         429,
       );
-    const duration = account?.extended_access === true ? 180 : 60;
+    const duration = allowance.max_seconds;
     const reservation = randomUUID();
     await db.query(
-      "INSERT INTO ov_demo_sessions (id,ip_hash,browser_hash,account_id,duration_seconds) VALUES ($1,$2,$3,$4,$5)",
+      "INSERT INTO ov_demo_sessions (id,ip_hash,browser_hash,account_id,duration_seconds,provider_agent_id) VALUES ($1,$2,$3,$4,$5,$6)",
       [
         reservation,
         identities.ip,
         identities.browser,
         account?.id || null,
         duration,
+        agentId,
       ],
     );
     await db.query(
@@ -179,15 +226,19 @@ export async function protectDemoOperation(
   operation,
   characters = 0,
   env = process.env,
+  account = null,
 ) {
   const identity = demoIdentities(request, owner, env);
   return locked(env, async (db) => {
     // Stop spending on further publication once the free trial has been consumed.
     const used = await db.query(
-      "SELECT 1 FROM ov_demo_sessions WHERE expires_at>NOW() AND (ip_hash=$1 OR browser_hash=$2) LIMIT 1",
-      [identity.ip, identity.browser],
+      "SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds FROM ov_demo_sessions WHERE expires_at>NOW() AND (ip_hash=$1 OR browser_hash=$2 OR ($3::uuid IS NOT NULL AND account_id=$3))",
+      [identity.ip, identity.browser, account?.id || null],
     );
-    if (used.rowCount && operation !== "account")
+    if (
+      !allowanceFromUsage(used.rows[0], account).available &&
+      operation !== "account"
+    )
       throw new ApiError(
         "Your daily demo has been used. Publishing is available again after 24 hours.",
         429,

@@ -185,19 +185,29 @@ function VoiceSession({ enabled }) {
         <span className="tag">{conversation.status}</span>
       </div>
       <p>
-        Speak with your configured company agent. This uses your microphone and
-        sends audio to the voice platform. Calls may use billable provider
-        credits.
+        Speak with your configured company agent. This free demo uses your
+        microphone and sends audio to the voice platform.
       </p>
       <div className="demo-limit-note">
-        <strong>{allowance?.max_seconds || 60}-second voice demo</strong>
+        <strong>
+          {allowance?.budget_seconds === 600
+            ? "10-minute account demo"
+            : "One-minute voice demo"}
+        </strong>
         <p>
-          One voice demo per network and browser every 24 hours. This simulates
-          a support phone call using your microphone; no phone number is
-          required.
+          {allowance?.budget_seconds === 600
+            ? "Up to 10 minutes per account, network and browser every 24 hours. "
+            : "One minute per network and browser every 24 hours. Verify an account for up to 10 minutes. "}
+          Time is reserved when a conversation starts. This simulates a support
+          phone call using your microphone; no phone number is required.
         </p>
-        <Link className="text-link" href="/account">
-          Create an account / sign in
+        <Link
+          className="text-link"
+          href={allowance?.signed_in ? "/account/settings" : "/account"}
+        >
+          {allowance?.signed_in
+            ? "Account settings"
+            : "Create an account / sign in"}
         </Link>
       </div>
       {allowance &&

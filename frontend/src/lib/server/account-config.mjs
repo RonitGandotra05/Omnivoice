@@ -1,0 +1,53 @@
+export function accountProviders(env = process.env) {
+  const sessionReady =
+    !!env.NEXTAUTH_SECRET &&
+    env.NEXTAUTH_SECRET.length >= 32 &&
+    !/change-me|replace-with|example/i.test(env.NEXTAUTH_SECRET);
+  return {
+    google:
+      sessionReady && !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET,
+    apple:
+      sessionReady &&
+      !!env.APPLE_ID &&
+      !!env.APPLE_SECRET &&
+      (env.NEXTAUTH_URL || env.PUBLIC_APP_URL || "").startsWith("https://"),
+    github: sessionReady && !!env.GITHUB_ID && !!env.GITHUB_SECRET,
+  };
+}
+export function accountMailEnabled(env = process.env) {
+  return (
+    env.ACCOUNT_EMAIL_ENABLED === "true" &&
+    !!env.SMTP_HOST &&
+    !!env.SMTP_FROM &&
+    (env.PUBLIC_APP_URL || "").startsWith("https://")
+  );
+}
+export function normalizeAccountEmail(value) {
+  const email = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return null;
+  return email;
+}
+export function validAccountPassword(password) {
+  return (
+    typeof password === "string" &&
+    [...password].length >= 12 &&
+    Buffer.byteLength(password, "utf8") <= 72
+  );
+}
+export function accountView(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    email_verified: row.email_verified === true,
+    theme: ["light", "dark", "system"].includes(row.theme)
+      ? row.theme
+      : "system",
+    has_password: !!row.password_hash,
+    created_at: row.created_at,
+    // Kept for older clients. Trial eligibility is derived from verified identity.
+    extended_access: row.extended_access === true,
+  };
+}
