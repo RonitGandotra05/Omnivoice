@@ -9,9 +9,9 @@ const plans = [
     desc: "Find your voice before connecting a line.",
     features: [
       "Unlimited local flow previews",
-      "Four agent roles",
-      "Draft saving & prompt export",
-      "No provider credentials required",
+      "Up to 10 minutes of voice demo daily",
+      "Company documents and handoff setup",
+      "Verified account required",
     ],
     cta: "Start exploring",
     href: "/try-for-free",
@@ -23,7 +23,7 @@ const plans = [
     features: [
       "Dedicated company voice agent setup",
       "Business knowledge configuration",
-      "Native Twilio connection workflow",
+      "Phone connection planning",
       "Provider usage billed separately",
     ],
     cta: "Discuss Studio",
@@ -166,19 +166,19 @@ export default function Pricing() {
         {[
           [
             "Can I try it before connecting a phone line?",
-            "Yes. The studio previews answers from your company documents before you connect a microphone or phone number. Live voice requires a connected workspace.",
+            "Yes. Try document answers and a browser voice demo before connecting a phone number.",
           ],
           [
             "Does the app replace my phone carrier?",
-            "OmniVoice runs your support conversations. A carrier such as Twilio provides the phone number and network. Import and assign your number through the voice platform’s native integration.",
+            "No. A connected phone service provides your number and handles telephone calls.",
           ],
           [
             "Will the agent complete bookings?",
-            "Only after you connect a booking tool that returns a successful result. The demo shows request collection and never claims a reservation is confirmed.",
+            "A connected booking tool is required. The demo records requests without confirming appointments.",
           ],
           [
             "Can I purchase a plan here?",
-            "Paid billing and checkout are not connected. Studio and Custom are proposed offerings for planning. Discuss the setup before committing to provider costs.",
+            "Not yet. Paid plans are proposed; contact us to discuss your setup.",
           ],
         ].map(([q, a]) => (
           <details key={q}>

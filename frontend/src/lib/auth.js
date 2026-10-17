@@ -12,7 +12,11 @@ export async function signAuthToken(user) {
   return new SignJWT({
     id: user.id,
     email: user.email,
-    isAdmin: Boolean(user.is_admin),
+    isAdmin: user.is_admin === true,
+    authVersion: user.authVersion || 0,
+    enrollmentOnly: user.enrollmentOnly === true,
+    mfaVerified: user.mfaVerified === true,
+    auth_time: Math.floor(Date.now() / 1000),
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -29,6 +33,10 @@ export async function verifyAuthToken(token) {
       email: payload.email,
       isAdmin: payload.isAdmin === true,
       role: payload.isAdmin === true ? "admin" : "user",
+      authVersion: payload.authVersion || 0,
+      enrollmentOnly: payload.enrollmentOnly === true,
+      mfaVerified: payload.mfaVerified === true,
+      authenticated_at: payload.auth_time || 0,
     };
   } catch {
     return null;

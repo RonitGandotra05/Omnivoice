@@ -56,14 +56,14 @@ export default function CallerJourney({
     }
   };
   return (
-    <details className="caller-journey" open>
+    <details className="caller-journey">
       <summary>Try the caller journey</summary>
       <p>
         {connected
           ? local
-            ? "Save a test caller and follow-up request in this browser. No email is sent or telephone transfer performed."
-            : "Save a test intake to your company workspace. Requesting human help creates a real support ticket and may send email."
-          : "Use dummy details to preview caller capture and after-hours handling. Nothing is saved to the company database or sent by email."}
+            ? "Try caller details and callback requests. Saved on this device; no email or phone transfer."
+            : "Creates a company support ticket and may send email. Use test details."
+          : "Use test details to preview handoffs and after-hours support. No email is sent."}
       </p>
       <div className="two-columns">
         {[

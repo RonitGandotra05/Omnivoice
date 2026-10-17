@@ -45,7 +45,7 @@ SUPPORT_API_KEY=your-company-api-key
 JWT_SECRET=your-random-frontend-session-secret
 ```
 
-Connected studio operations require an existing administrator account and sign-in. See the existing README and `npm run setup:admin` for account setup (requires the frontend account database). The public sandbox remains usable without an account. Alternatively, use the company API directly with its key. No keys are exposed through NEXT_PUBLIC variables or returned to the browser. This studio deployment connects to one company via server configuration; deploy another console for another company, or build a tenant-selecting authenticated UI on the same backend APIs.
+Connected studio operations require an existing administrator account and sign-in. See the existing README and `npm run setup:user` followed by a manual database role assignment for account setup (requires the frontend account database). The public sandbox remains usable without an account. Alternatively, use the company API directly with its key. No keys are exposed through NEXT_PUBLIC variables or returned to the browser. This studio deployment connects to one company via server configuration; deploy another console for another company, or build a tenant-selecting authenticated UI on the same backend APIs.
 
 Load the connected workspace under **Setup & activity**, edit the brief and routing, save, and upload documents. Connected documents and tickets persist in the backend database. Demo configuration exports contain documents and profile, excluding caller tickets. They are reference artifacts; there is no automatic import endpoint.
 

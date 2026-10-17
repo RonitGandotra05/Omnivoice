@@ -16,7 +16,6 @@ export default function UserEditor({ user = {}, onSave, creating = false }) {
         firstName: f.get("firstName"),
         lastName: f.get("lastName"),
         phoneNumber: f.get("phoneNumber"),
-        isAdmin: f.has("isAdmin"),
         isActive: f.has("isActive"),
       });
     } catch (err) {
@@ -51,20 +50,17 @@ export default function UserEditor({ user = {}, onSave, creating = false }) {
             name="password"
             type="password"
             autoComplete="new-password"
-            minLength={8}
+            minLength={15}
+            maxLength={128}
             required={creating}
           />
         </label>
       </div>
       <div className="editor-checks">
-        <label>
-          <input
-            name="isAdmin"
-            type="checkbox"
-            defaultChecked={user.is_admin}
-          />{" "}
-          Administrator
-        </label>
+        <p>
+          Access role:{" "}
+          <strong>{user.is_admin ? "Administrator" : "User"}</strong>
+        </p>
         <label>
           <input
             name="isActive"

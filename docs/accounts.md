@@ -1,58 +1,37 @@
-# Accounts · Your space, your voice
+# Google account sign-in
 
-The account page supports email/password registration and Google, Apple and GitHub OAuth. `/account/settings` manages the display name, appearance, password (for password accounts), verification and sign-out on all devices. No profile photo is requested, stored or shown.
+Customers use **Continue with Google** to create an account or sign in. Manual email/password, Apple and GitHub login are disabled at the API as well as in the UI. The separate operator login remains available only for database-assigned administrators.
 
-## Configuration
+## Configure Google
 
-Keep credentials in `frontend/.env.local` for development and your hosting secret manager in production. `.env.example` contains empty placeholders only. Existing private voice/database credentials are unchanged.
+Set these server-side in `frontend/.env.local` and the hosting environment:
 
-| Setting | Purpose |
+| Variable | Purpose |
 | :--- | :--- |
-| `DATABASE_URL` or `NEON_DB_CONNECTION_STRING` | Neon PostgreSQL with verified TLS. |
-| `JWT_SECRET`, `STUDIO_SESSION_SECRET` | Existing independent random secrets, at least 32 characters each. |
-| `NEXTAUTH_SECRET` | Independent random secret of at least 32 characters for encrypted OAuth session cookies. |
-| `PUBLIC_APP_URL`, `NEXTAUTH_URL` | Same canonical application origin; HTTPS in production. |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Web OAuth application. |
-| `GITHUB_ID`, `GITHUB_SECRET` | GitHub OAuth application. |
-| `APPLE_ID`, `APPLE_SECRET` | Apple Services ID and signed client-secret JWT. Renew the secret before its expiration. |
-| `ACCOUNT_EMAIL_ENABLED=true` | Enables verification and password-reset emails. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` | Mail transport; authenticated TLS on 587 or implicit TLS on 465. The public app URL must be HTTPS. |
+| `GOOGLE_CLIENT_ID` | Google OAuth web application client ID. |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret. |
+| `NEXTAUTH_SECRET` | Independent random session secret of at least 32 characters. Keep it stable. |
+| `NEXTAUTH_URL` | Exact application origin. |
+| `PUBLIC_APP_URL` | The same origin, HTTPS in production. |
+| `DATABASE_URL` / `NEON_DB_CONNECTION_STRING` | Neon database connection. |
+| `JWT_SECRET`, `STUDIO_SESSION_SECRET` | Existing private signing/protection secrets. |
 
-Register exact callback URLs in each provider console:
+Register `https://YOUR_DOMAIN/api/auth/callback/google` as an authorized Google redirect URI. For local development, register `http://127.0.0.1:3000/api/auth/callback/google` separately. Never expose any secret with `NEXT_PUBLIC_`. An unconfigured provider remains unavailable rather than starting a broken sign-in.
 
-- Google: `https://YOUR_DOMAIN/api/auth/callback/google`
-- GitHub: `https://YOUR_DOMAIN/api/auth/callback/github`
-- Apple: `https://YOUR_DOMAIN/api/auth/callback/apple`
+Follow the [Google provider setup](https://next-auth.js.org/providers/google) and [Google token verification guidance](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
 
-Use the deployed domain for Apple. Apple requires an HTTPS non-localhost domain, service configuration in the Apple Developer account, and a signed client secret. Configure its private email relay to accept your sender if you need to email relay addresses. Google/GitHub permit separately configured local development callbacks. Unconfigured providers appear as unavailable rather than launching a broken sign-in.
+## Identity and privacy
 
-Follow the official [Google provider setup](https://next-auth.js.org/providers/google), [Apple setup](https://next-auth.js.org/providers/apple) and [GitHub email API](https://docs.github.com/en/rest/users/emails#list-email-addresses-for-the-authenticated-user). Provider scopes are limited to identity and email. OAuth uses NextAuth's CSRF and callback checks; Google/Apple use PKCE and state, GitHub uses state. Apple's cross-site POST callback requires Secure, HTTP-only, short-lived SameSite=None state/PKCE cookies. Account session cookies retain their stricter defaults.
+NextAuth verifies the Google OpenID Connect response with state and PKCE protections. The app requests only `openid email profile`. Account creation takes the name and email from the validated Google profile and keys the identity by Google's immutable subject (`sub`). It stores no Google password, profile photo, access token or refresh token.
 
-## Database and identity
+The Google email must be verified. Without our own email verification service, the app accepts Gmail addresses or Google Workspace accounts carrying Google's `hd` claim. Google accounts using external mailboxes without that claim are rejected, because Google is not authoritative for their current mailbox ownership.
 
-The idempotent setup adds columns to `ov_demo_accounts` and creates `ov_account_identities` and `ov_account_tokens`. It runs before account operations; no embedded database or Python is involved. Existing password accounts remain supported and start unverified until they confirm ownership. Before rollout, back up the database and verify permissions to apply additive schema changes.
+Existing identity records are reused by subject. A matching email is never automatically merged with a different identity. Legacy password/other-provider accounts and sessions cannot sign in through the disabled methods; their records are preserved for deliberate database migration. This change does not assign administrator roles.
 
-Emails are trimmed/lowercased with a database unique index. Plus-addresses, aliases and Apple's private relay addresses can represent different email identities; one-email uniqueness cannot establish one-person uniqueness. Shared network/browser quotas limit repeated free-trial spending.
+## Demo and security
 
-Google/Apple must return a verified email claim. GitHub must return a primary **verified** address from its authenticated email API. Provider identities are keyed by provider and immutable subject. Existing email accounts cannot be silently linked to another provider: use the original sign-in method. This prevents pre-registration/account-linking attacks. There is no provider linking UI in this release.
+Only verified, authenticated Google accounts can access demos. The allowance remains up to ten minutes per rolling 24 hours, shared across account, network and browser. Time is reserved at conversation start; repeat agent sessions cannot mint another allowance.
 
-Manual passwords use bcrypt with cost 12 and a 12-character minimum / 72-byte maximum. Single-use verification and recovery links expire after 30 minutes; only SHA-256 hashes are stored. Tokens travel in URL fragments and are submitted by an explicit same-origin POST. Reset, password change and sign-out-all invalidate previous session versions. Every authenticated request checks active account status and the current database version. Provider access/refresh tokens and profile photos are not retained.
+Account settings include display name, appearance, authenticator 2FA and session revocation. Google handles its own password and recovery. Application authenticator 2FA uses a QR code and recovery codes and does not require SMTP. Optional SMTP security notices can be configured separately; email delivery is not needed for Google signup.
 
-Without mail credentials, email/password accounts can still register/sign in and use the guest-sized demo; **they cannot unlock 10 minutes until verified**. Configured verified social accounts unlock that allowance immediately. Verification/recovery failures never bypass verification.
-
-## Voice allowance
-
-- Guests and unverified accounts: 60 seconds per rolling 24 hours.
-- Verified accounts: 600 seconds per rolling 24 hours, shared with the network and browser.
-- Prior guest reservations reduce the remaining verified allowance (60 seconds used → 540 seconds remaining).
-- A conversation reserves all remaining time before provider credentials are issued. Hanging up early or an ambiguous connection failure does not refund it.
-- PostgreSQL serializes reservations. Changing browsers, networks, accounts or concurrent requests cannot reset a matching account/network/browser budget. Network changes and browser clearing combined with a genuinely different identity cannot be fully prevented; the site-wide daily cap also remains in place.
-- The provider receives the reserved maximum duration; the UI also displays and stops its timer. Provider agent concurrency stays at one. Each published agent permits one daily start to prevent signed-URL replay. After upgrading a used guest demo, publish the agent again before starting the remaining account demo; reuse is rejected before reserving more time. The database is authoritative for the total seconds.
-
-Registration, sign-in, recovery and account mutations have shared server-side rate limits. No browser-supplied role, email verification, allowance or target-account ID is accepted. Name and appearance updates are scoped to the authenticated account; email changes are intentionally absent.
-
-Appearance previews immediately, persists on the device, and saves to the signed-in account when requested. System mode follows the device preference. Sign-out does not delete local company documents. Identity metadata resides in PostgreSQL and is protected by TLS, database access controls and the hosting provider's encryption at rest; it is not end-to-end encrypted.
-
-## Verification boundary
-
-Local tests use isolated disposable PostgreSQL schemas, concurrent reservations and mocked provider identity responses. Provider console registration, live Google/Apple/GitHub consent/return and SMTP delivery still require actual provider/mail credentials. Neither a successful build nor callback unit tests prove those external integrations are configured.
+See [authentication security](authentication-security.md) for protection limits, encryption and database-only role management. Local tests use disposable Neon schemas and mocked Google/provider responses. Live Google consent requires the configured OAuth application; a successful build does not prove those credentials are registered correctly.

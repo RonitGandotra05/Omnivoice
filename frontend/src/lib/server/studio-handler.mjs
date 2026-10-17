@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { ACCOUNT_DEMO_SECONDS } from "../demo-limits.mjs";
 import {
   protectionEnabled,
   demoIdentities,
@@ -193,11 +194,10 @@ function makeAgent(profile, knowledge, owner, env, mode) {
       },
       conversation: {
         max_duration_seconds: Math.min(
-          protectionEnabled(env) ? 60 : 600,
+          ACCOUNT_DEMO_SECONDS,
           Math.max(
             30,
-            Number(env.VOICE_MAX_DURATION_SECONDS) ||
-              (protectionEnabled(env) ? 60 : 300),
+            Number(env.VOICE_MAX_DURATION_SECONDS) || ACCOUNT_DEMO_SECONDS,
           ),
         ),
       },
@@ -247,7 +247,7 @@ function status(env) {
     ocr_available: true,
     public_demo_enabled: env.PUBLIC_DEMO_ENABLED !== "false",
     backend: "nextjs",
-    demo_max_seconds: protectionEnabled(env) ? 60 : null,
+    demo_max_seconds: protectionEnabled(env) ? ACCOUNT_DEMO_SECONDS : null,
     daily_demo_protected: protectionEnabled(env),
   };
 }
@@ -256,6 +256,7 @@ export function createStudioHandler({
   env = process.env,
   fetchImpl = fetch,
   authenticate = async () => false,
+  accountForRequest = demoAccount,
   store = serverAction,
   transaction = transactServer,
   limit = rateLimit,
@@ -283,16 +284,44 @@ export function createStudioHandler({
         return respond(status(env));
       }
       if (path === "demo/allowance" && method === "GET") {
+        const account = await accountForRequest(request, env);
+        if (!account?.id || account.email_verified !== true)
+          return respond({
+            available: false,
+            signed_in: !!account,
+            account_required: !account?.id,
+            verification_required: !!account,
+            max_seconds: 0,
+            budget_seconds: 0,
+            used_seconds: 0,
+          });
         const session = browserOwner(request, env);
         cookie = session.cookie;
         if (!protectionEnabled(env))
-          return respond({ available: true, max_seconds: 300 });
-        const account = await demoAccount(request, env);
+          return respond({
+            available: true,
+            signed_in: true,
+            max_seconds: ACCOUNT_DEMO_SECONDS,
+            budget_seconds: ACCOUNT_DEMO_SECONDS,
+          });
         return respond({
           ...(await demoAllowance(request, session.owner, env, account)),
           signed_in: !!account,
           extended_access: account?.extended_access === true,
         });
+      }
+      let demoMember;
+      if (
+        path.startsWith("voice/") ||
+        path === "preview" ||
+        path === "preview-caller"
+      ) {
+        demoMember = await accountForRequest(request, env);
+        if (!demoMember?.id || demoMember.email_verified !== true)
+          throw new ApiError(
+            "Sign in with a verified account to try the demo.",
+            401,
+          );
       }
       if (path === "webhooks/elevenlabs") {
         if (method !== "POST") throw new ApiError("Method not allowed", 405);
@@ -465,9 +494,7 @@ export function createStudioHandler({
         cookie = session.cookie;
         const owner = session.owner;
         const protectedDemo = protectionEnabled(env);
-        const voiceAccount = protectedDemo
-          ? await demoAccount(request, env)
-          : null;
+        const voiceAccount = demoMember;
         const ip = protectedDemo
           ? demoIdentities(request, owner, env).ip
           : "shared-ingress";
@@ -766,8 +793,14 @@ export function createStudioHandler({
           // Reserve the entire allowance before contacting the provider. Ambiguous failures
           // consume it too, so retries cannot mint extra credentials after a timeout.
           const allowance = protectedDemo
-            ? await reserveDemo(request, owner, env, voiceAccount, grant.agent_id)
-            : { max_seconds: 300 };
+            ? await reserveDemo(
+                request,
+                owner,
+                env,
+                voiceAccount,
+                grant.agent_id,
+              )
+            : { max_seconds: ACCOUNT_DEMO_SECONDS };
           if (protectedDemo)
             await provider(`/agents/${id(grant.agent_id)}`, {
               method: "PATCH",

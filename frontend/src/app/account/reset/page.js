@@ -1,4 +1,4 @@
-import AccountTokenPage from "@/components/AccountTokenPage";
-export default function ResetPassword() {
-  return <AccountTokenPage purpose="reset" />;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/account");
 }

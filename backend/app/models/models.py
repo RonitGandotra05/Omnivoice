@@ -33,7 +33,8 @@ class CompanyUser(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    role = Column(String(50), default="admin")  # admin, viewer, etc.
+    # Elevated membership is assigned manually in the database, never by signup.
+    role = Column(String(50), default="user", server_default="user", nullable=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     # Relationships

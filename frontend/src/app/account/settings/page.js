@@ -1,4 +1,6 @@
 "use client";
+import MfaSettings from "@/components/MfaSettings";
+import { ACCOUNT_DEMO_SECONDS } from "@/lib/demo-limits.mjs";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +15,6 @@ export default function AccountSettings() {
     logout,
     theme,
     setTheme,
-    email_available,
     allowance,
   } = useAccount();
   const router = useRouter();
@@ -99,6 +100,7 @@ export default function AccountSettings() {
             )}
           </div>
           <div className="settings-grid">
+            <MfaSettings account={account} onChanged={refresh} />
             <section className="panel settings-panel">
               <p className="eyebrow">01 / THE ESSENTIALS</p>
               <h2>Personal details.</h2>
@@ -109,7 +111,7 @@ export default function AccountSettings() {
                 }}
               >
                 <label className="field">
-                  Your name
+                  Display name
                   <input
                     name="name"
                     autoComplete="name"
@@ -123,7 +125,7 @@ export default function AccountSettings() {
                 <label className="field">
                   Email address
                   <input type="email" value={account.email} readOnly />
-                  <small>Your email is your unique account identity.</small>
+                  <small>Your email is provided by Google.</small>
                 </label>
                 <span
                   className={
@@ -135,30 +137,6 @@ export default function AccountSettings() {
                     ? "Email verified"
                     : "Email verification pending"}
                 </span>
-                {!account.email_verified && (
-                  <div className="settings-verification">
-                    <p>
-                      Verify your email to unlock up to 10 minutes of voice demo
-                      time.
-                    </p>
-                    <button
-                      className="text-link"
-                      type="button"
-                      disabled={!!busy || !email_available}
-                      onClick={() => action("send-verification")}
-                    >
-                      Send verification email
-                      <Icon name="arrow" />
-                    </button>
-                    {!email_available && (
-                      <small>
-                        Verification emails are not available yet. Your
-                        one-minute demo remains available, subject to daily
-                        limits.
-                      </small>
-                    )}
-                  </div>
-                )}
                 <button className="button copper" disabled={!!busy}>
                   {busy === "settings" ? "Saving…" : "Save details"}
                   <Icon name="check" />
@@ -232,18 +210,16 @@ export default function AccountSettings() {
               <progress
                 value={Math.min(
                   allowance?.used_seconds || 0,
-                  allowance?.budget_seconds || 60,
+                  allowance?.budget_seconds || ACCOUNT_DEMO_SECONDS,
                 )}
-                max={allowance?.budget_seconds || 60}
+                max={allowance?.budget_seconds || ACCOUNT_DEMO_SECONDS}
                 aria-label="Daily voice demo time reserved"
               />
               <p>
                 {account.email_verified
                   ? "Up to 10 minutes every 24 hours."
                   : "Verify your email for up to 10 minutes every 24 hours."}{" "}
-                Time is reserved when you start a conversation, including if it
-                ends early. Your account, network and browser share the same
-                limit.
+                Time is reserved when your conversation starts.
               </p>
               {allowance?.retry_at && (
                 <small>
@@ -259,53 +235,10 @@ export default function AccountSettings() {
             <section className="panel settings-panel">
               <p className="eyebrow">04 / PEACE OF MIND</p>
               <h2>Account security.</h2>
-              {account.has_password ? (
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const form = e.currentTarget;
-                    if (
-                      await action(
-                        "password",
-                        Object.fromEntries(new FormData(form)),
-                      )
-                    )
-                      form.reset();
-                  }}
-                >
-                  <label className="field">
-                    Current password
-                    <input
-                      type="password"
-                      name="current_password"
-                      autoComplete="current-password"
-                      maxLength={72}
-                      required
-                    />
-                  </label>
-                  <label className="field">
-                    New password
-                    <input
-                      type="password"
-                      name="password"
-                      autoComplete="new-password"
-                      minLength={12}
-                      maxLength={72}
-                      required
-                    />
-                    <small>At least 12 characters; up to 72 bytes.</small>
-                  </label>
-                  <button className="button outline" disabled={!!busy}>
-                    Update password
-                    <Icon name="arrow" />
-                  </button>
-                </form>
-              ) : (
-                <p>
-                  You sign in with a connected provider. Manage your password
-                  and two-step verification with that provider.
-                </p>
-              )}
+              <p>
+                You sign in with Google. Manage your Google password and Google
+                security settings in your Google account.
+              </p>
               <div className="settings-signout">
                 <button
                   className="text-link"

@@ -1,3 +1,5 @@
+import { normalizeEmail } from "./auth-email.mjs";
+import { validNewPassword } from "./auth-password.mjs";
 export function accountProviders(env = process.env) {
   const sessionReady =
     !!env.NEXTAUTH_SECRET &&
@@ -6,12 +8,6 @@ export function accountProviders(env = process.env) {
   return {
     google:
       sessionReady && !!env.GOOGLE_CLIENT_ID && !!env.GOOGLE_CLIENT_SECRET,
-    apple:
-      sessionReady &&
-      !!env.APPLE_ID &&
-      !!env.APPLE_SECRET &&
-      (env.NEXTAUTH_URL || env.PUBLIC_APP_URL || "").startsWith("https://"),
-    github: sessionReady && !!env.GITHUB_ID && !!env.GITHUB_SECRET,
   };
 }
 export function accountMailEnabled(env = process.env) {
@@ -22,19 +18,8 @@ export function accountMailEnabled(env = process.env) {
     (env.PUBLIC_APP_URL || "").startsWith("https://")
   );
 }
-export function normalizeAccountEmail(value) {
-  const email = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return null;
-  return email;
-}
-export function validAccountPassword(password) {
-  return (
-    typeof password === "string" &&
-    [...password].length >= 12 &&
-    Buffer.byteLength(password, "utf8") <= 72
-  );
-}
+export const normalizeAccountEmail = normalizeEmail;
+export const validAccountPassword = validNewPassword;
 export function accountView(row) {
   if (!row) return null;
   return {

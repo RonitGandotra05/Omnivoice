@@ -1,93 +1,73 @@
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Connect your agent" };
+export const metadata = { title: "Contact" };
 export default function Contact() {
-  const email = process.env.CONTACT_EMAIL;
+  const configured = (process.env.CONTACT_EMAIL || "").trim();
+  const email = /^[^\s@?&#]+@[^\s@?&#]+\.[^\s@?&#]+$/.test(configured)
+    ? configured
+    : null;
   return (
-    <div className="page-shell contact">
-      <div className="page-kicker">
-        <span>CONNECTION / YOUR NEXT STEP</span>
-        <span>FROM PREVIEW TO PHONE LINE ↗</span>
-      </div>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">LET’S MAKE THE CONNECTION</p>
-          <h1>
-            A voice for
-            <br />
-            <em>your business.</em>
-          </h1>
-          <p>
-            A few thoughtful steps between your first preview and your first
-            real conversation.
-          </p>
-        </div>
-        <Link href="/try-for-free" className="button dark">
-          Keep exploring <Icon name="arrow" />
-        </Link>
-      </div>
-      <div className="connection-guide">
-        <section className="panel">
-          <p className="eyebrow">01 / SET UP YOUR AGENT</p>
-          <h2>
-            Let your agent
-            <br />
-            do the heavy lifting.
-          </h2>
-          <ol>
-            <li>
-              <strong>Add your company details.</strong> Set a greeting, tone,
-              and support inbox so the agent represents your business.
-            </li>
-            <li>
-              <strong>Share your knowledge.</strong> Upload FAQs, product
-              guides, opening hours, and policies.
-            </li>
-            <li>
-              <strong>Choose the handoff.</strong> Tell the agent which team
-              should receive billing questions, technical issues, and other
-              requests.
-            </li>
-            <li>
-              <strong>Test the experience.</strong> Ask real customer questions
-              and review the answers and sources before connecting your phone
-              line.
-            </li>
-          </ol>
-          <Link href="/try-for-free" className="text-link">
-            Open your company workspace <Icon name="arrow" />
-          </Link>
-        </section>
-        <aside className="dark-panel">
+    <div className="page-shell guide-page">
+      <header className="guide-heading">
+        <p className="eyebrow">LET’S TALK</p>
+        <h1>
+          Support that fits <em>your business.</em>
+        </h1>
+        <p>Have a question or a company in mind? Get in touch with Ronit.</p>
+      </header>
+      <div className="contact-cards">
+        <section className="panel contact-card">
           <Icon name="chat" />
-          <p className="eyebrow">A MORE THOUGHTFUL SETUP</p>
-          <h2>
-            Start with
-            <br />
-            the right questions.
-          </h2>
+          <h2>Talk about your setup.</h2>
           <p>
-            Which calls should your agent handle? What should it hand off? Where
-            does a request become a confirmed action?
+            Share your business, the questions you receive, and what you’d like
+            your agent to handle.
           </p>
+          <a
+            className="button copper"
+            href={
+              email
+                ? `mailto:${email}?subject=OmniVoice%20enquiry`
+                : "https://www.linkedin.com/in/ronitgandotra"
+            }
+            {...(!email
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
+          >
+            {email ? "Email Ronit" : "Message on LinkedIn"}
+            <Icon name="arrow" />
+          </a>
+        </section>
+        <section className="panel contact-card">
+          <Icon name="document" />
+          <h2>Need a hand getting started?</h2>
           <p>
-            Bring your business hours, services, policies, and a clear
-            escalation route.
+            Build a sample agent, add a few documents, and try your first
+            conversation.
           </p>
-          {email ? (
-            <a
-              className="button copper"
-              href={`mailto:${email}?subject=OmniVoice%20workspace%20enquiry`}
-            >
-              Discuss your setup <Icon name="arrow" />
-            </a>
-          ) : (
-            <Link href="/try-for-free" className="button copper">
-              Open your workspace <Icon name="arrow" />
-            </Link>
-          )}
-        </aside>
+          <Link href="/tutorial" className="button outline">
+            Follow the tutorial <Icon name="arrow" />
+          </Link>
+          <a
+            className="text-link"
+            href="https://github.com/RonitGandotra05/Omnivoice/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Report a technical issue <Icon name="right" />
+          </a>
+          <small>
+            Keep passwords, API keys, and private customer information out of
+            public reports.
+          </small>
+        </section>
+      </div>
+      <div className="guide-next">
+        <p>Want to hear it first?</p>
+        <Link className="text-link" href="/try-for-free">
+          Try the free demo <Icon name="arrow" />
+        </Link>
       </div>
     </div>
   );

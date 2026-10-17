@@ -60,7 +60,7 @@ export default function AccountTokenPage({ purpose }) {
             </p>
             <Link
               className="button copper"
-              href={purpose === "verify" ? "/account/settings" : "/account"}
+              href={purpose === "verify" ? "/account?verified=1" : "/account"}
             >
               Continue to your account
             </Link>
@@ -69,21 +69,33 @@ export default function AccountTokenPage({ purpose }) {
           <form onSubmit={submit}>
             <p>
               {purpose === "verify"
-                ? "Confirm your email to unlock your account demo."
+                ? "Set your final password to confirm your email and unlock your account demo."
                 : "Choose a new password. Existing sessions will be signed out."}
             </p>
+            <label className="field">
+              {purpose === "verify" ? "Your account password" : "New password"}
+              <input
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={15}
+                maxLength={128}
+                required
+              />
+              <small>15–128 characters. Choose a unique passphrase.</small>
+            </label>
             {purpose === "reset" && (
               <label className="field">
-                New password
+                Authenticator or recovery code (if enabled)
                 <input
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={12}
-                  maxLength={72}
-                  required
+                  name="code"
+                  autoComplete="one-time-code"
+                  maxLength={24}
                 />
-                <small>At least 12 characters; up to 72 bytes.</small>
+                <small>
+                  Two-factor authentication stays required after a password
+                  reset.
+                </small>
               </label>
             )}
             {error && (

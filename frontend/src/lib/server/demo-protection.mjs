@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { databasePool } from "./support-store.mjs";
 import { ApiError } from "./provider.mjs";
+import { ACCOUNT_DEMO_SECONDS } from "../demo-limits.mjs";
 
 export function protectionEnabled(env = process.env) {
   return (
@@ -127,6 +128,8 @@ export async function demoAllowance(
   env = process.env,
   account = null,
 ) {
+  if (!account?.id || account.email_verified !== true)
+    return allowanceFromUsage(null, account);
   const identities = demoIdentities(request, owner, env);
   await setupDemoDatabase(env);
   const r = await databasePool(env).query(
@@ -137,7 +140,8 @@ export async function demoAllowance(
   return allowanceFromUsage(r.rows[0], account);
 }
 export function allowanceFromUsage(usage, account) {
-  const budget = account?.email_verified === true ? 600 : 60;
+  const budget =
+    account?.id && account.email_verified === true ? ACCOUNT_DEMO_SECONDS : 0;
   const used = Number(usage?.used_seconds) || 0;
   const remaining = Math.max(0, budget - used);
   return {
@@ -150,6 +154,7 @@ export function allowanceFromUsage(usage, account) {
     budget_seconds: budget,
     used_seconds: used,
     verification_required: !!account && !account.email_verified,
+    account_required: !account?.id,
   };
 }
 export async function reserveDemo(
@@ -159,6 +164,8 @@ export async function reserveDemo(
   account = null,
   agentId = null,
 ) {
+  if (!account?.id || account.email_verified !== true)
+    throw new ApiError("Sign in with a verified account to try the demo.", 401);
   const identities = demoIdentities(request, owner, env);
   return locked(env, async (db) => {
     if (agentId) {
@@ -186,7 +193,7 @@ export async function reserveDemo(
     const allowance = allowanceFromUsage(active.rows[0], account);
     if (!allowance.available)
       throw new ApiError(
-        "This account, network or browser has used its daily voice allowance. Try again after 24 hours.",
+        "Your daily voice demo has been used. Please try again after 24 hours.",
         429,
       );
     const total = await db.query(
@@ -228,6 +235,11 @@ export async function protectDemoOperation(
   env = process.env,
   account = null,
 ) {
+  if (
+    operation !== "account" &&
+    (!account?.id || account.email_verified !== true)
+  )
+    throw new ApiError("Sign in with a verified account to try the demo.", 401);
   const identity = demoIdentities(request, owner, env);
   return locked(env, async (db) => {
     // Stop spending on further publication once the free trial has been consumed.

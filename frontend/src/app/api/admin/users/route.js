@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { query } from "../../../../lib/db";
 import { verifyAdminSession } from "../../../../lib/admin-session";
-import bcrypt from "bcryptjs";
+import { normalizeEmail } from "@/lib/server/auth-email.mjs";
+import { hashPassword, validNewPassword } from "@/lib/server/auth-password.mjs";
+import { assertDatabaseManagedRoles } from "@/lib/server/account-role-policy.mjs";
 
 // GET /api/admin/users - Get all users
 export async function GET(request) {
@@ -60,21 +62,33 @@ export async function POST(request) {
     }
 
     // Get request body
-    const { email, password, firstName, lastName, phoneNumber, isAdmin } =
-      await request.json();
+    const body = await request.json();
+    assertDatabaseManagedRoles(body);
+    const {
+      email: rawEmail,
+      password,
+      firstName,
+      lastName,
+      phoneNumber,
+    } = body;
+    const email = normalizeEmail(rawEmail);
 
     // Validate input
-    if (!email || !password) {
+    if (!email || !validNewPassword(password)) {
       return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 },
+        {
+          error:
+            "Enter a valid email and a unique password of 15–128 characters.",
+        },
+        { status: 422 },
       );
     }
 
     // Check if user already exists
-    const existingUser = await query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const existingUser = await query(
+      "SELECT * FROM users WHERE LOWER(email) = $1",
+      [email],
+    );
     if (existingUser.rows.length > 0) {
       return NextResponse.json(
         { error: "User with this email already exists" },
@@ -83,7 +97,7 @@ export async function POST(request) {
     }
 
     // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hashPassword(password);
 
     // Create the new user with IST timezone
     const result = await query(
@@ -91,7 +105,7 @@ export async function POST(request) {
         email, password, first_name, last_name, phone_number, is_admin,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6,
+        $1, $2, $3, $4, $5, FALSE,
         NOW() AT TIME ZONE 'Asia/Kolkata', NOW() AT TIME ZONE 'Asia/Kolkata'
       ) RETURNING id, email, first_name, last_name, phone_number, is_admin, created_at`,
       [
@@ -100,7 +114,6 @@ export async function POST(request) {
         firstName || null,
         lastName || null,
         phoneNumber || null,
-        isAdmin || false,
       ],
     );
 
@@ -108,8 +121,8 @@ export async function POST(request) {
   } catch (error) {
     console.error("Error creating user:", { code: error.code });
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
+      { error: error.status === 403 ? error.message : "Internal server error" },
+      { status: error.status === 403 ? 403 : 500 },
     );
   }
 }

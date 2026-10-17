@@ -1,3 +1,4 @@
+import { reserveAccountMail } from "./auth-notices.mjs";
 import { createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { databasePool } from "./support-store.mjs";
@@ -16,6 +17,7 @@ export async function sendAccountLink(
       "Email delivery is not available yet. Please try again later.",
       503,
     );
+  await reserveAccountMail(account.email, env);
   const token = randomBytes(32).toString("base64url");
   const result = await databasePool(env).query(
     `INSERT INTO ov_account_tokens(token_hash,account_id,purpose,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '30 minutes') ON CONFLICT(account_id,purpose) DO UPDATE SET token_hash=$1,expires_at=NOW()+INTERVAL '30 minutes',created_at=NOW() WHERE ov_account_tokens.created_at<NOW()-INTERVAL '2 minutes' RETURNING token_hash`,

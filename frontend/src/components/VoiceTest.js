@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { ACCOUNT_DEMO_SECONDS } from "@/lib/demo-limits.mjs";
 import { createVoiceStartGuard } from "@/lib/voice-start.mjs";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import {
@@ -25,11 +26,11 @@ function saveTranscriptSnapshot(value) {
   });
 }
 
-function VoiceSession({ enabled }) {
+function VoiceSession({ enabled, unavailableReason }) {
   const [error, setError] = useState("");
   const [allowance, setAllowance] = useState(null);
-  const [remaining, setRemaining] = useState(60);
-  const maxSeconds = useRef(60);
+  const [remaining, setRemaining] = useState(ACCOUNT_DEMO_SECONDS);
+  const maxSeconds = useRef(ACCOUNT_DEMO_SECONDS);
   const refreshAllowance = () =>
     serverRequest("demo/allowance", null, { method: "GET" })
       .then(setAllowance)
@@ -150,7 +151,7 @@ function VoiceSession({ enabled }) {
         signal: attempt.controller.signal,
       });
       if (!guard.current.current(attempt)) return;
-      maxSeconds.current = data.max_seconds || 60;
+      maxSeconds.current = data.max_seconds || ACCOUNT_DEMO_SECONDS;
       setRemaining(maxSeconds.current);
       setAllowance((previous) => ({ ...previous, available: false }));
       await conversation.startSession({
@@ -184,33 +185,29 @@ function VoiceSession({ enabled }) {
         </h3>
         <span className="tag">{conversation.status}</span>
       </div>
-      <p>
-        Speak with your configured company agent. This free demo uses your
-        microphone and sends audio to the voice platform.
-      </p>
+      <p>Try a support call in your browser. Microphone access is required.</p>
       <div className="demo-limit-note">
         <strong>
-          {allowance?.budget_seconds === 600
-            ? "10-minute account demo"
-            : "One-minute voice demo"}
+          {allowance?.account_required
+            ? "Sign in to try the demo"
+            : "10-minute account demo"}
         </strong>
-        <p>
-          {allowance?.budget_seconds === 600
-            ? "Up to 10 minutes per account, network and browser every 24 hours. "
-            : "One minute per network and browser every 24 hours. Verify an account for up to 10 minutes. "}
-          Time is reserved when a conversation starts. This simulates a support
-          phone call using your microphone; no phone number is required.
-        </p>
+        <p>Available daily. Your demo time is reserved when you start.</p>
         <Link
           className="text-link"
           href={allowance?.signed_in ? "/account/settings" : "/account"}
         >
           {allowance?.signed_in
             ? "Account settings"
-            : "Create an account / sign in"}
+            : "Create account / sign in"}
+        </Link>
+        <Link className="text-link" href="/docs#voice-demo">
+          Demo details
         </Link>
       </div>
       {allowance &&
+        !allowance.account_required &&
+        !allowance.verification_required &&
         !allowance.available &&
         conversation.status !== "connected" && (
           <p role="status">
@@ -264,8 +261,7 @@ function VoiceSession({ enabled }) {
       )}
       {!enabled && (
         <small>
-          Save and publish your workspace, then configure voice to enable this
-          test.
+          {unavailableReason || "Save and publish your workspace to start."}
         </small>
       )}
       {error && (

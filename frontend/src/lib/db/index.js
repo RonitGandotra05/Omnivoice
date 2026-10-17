@@ -16,7 +16,7 @@ if (configuredUrl) {
 export const pool = new Pool({
   connectionString,
   ssl,
-  max: 10,
+  max: 3,
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,
 });

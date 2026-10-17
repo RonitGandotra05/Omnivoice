@@ -1,4 +1,4 @@
-import AccountTokenPage from "@/components/AccountTokenPage";
-export default function VerifyEmail() {
-  return <AccountTokenPage purpose="verify" />;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/account");
 }

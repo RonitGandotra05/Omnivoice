@@ -11,6 +11,7 @@ export default function Navbar() {
   const links = [
     ["Overview", "/"],
     ["Agent studio", "/try-for-free"],
+    ["Guide", "/docs"],
     ["Pricing", "/pricing"],
   ];
   return (
@@ -33,8 +34,16 @@ export default function Navbar() {
             <Link
               key={url}
               href={url}
-              aria-current={path === url ? "page" : undefined}
-              className={path === url ? "active" : ""}
+              aria-current={
+                path === url || (url === "/docs" && path === "/tutorial")
+                  ? "page"
+                  : undefined
+              }
+              className={
+                path === url || (url === "/docs" && path === "/tutorial")
+                  ? "active"
+                  : ""
+              }
             >
               {label}
             </Link>

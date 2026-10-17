@@ -4,35 +4,18 @@ import { setupDemoDatabase } from "./demo-protection.mjs";
 import { ApiError } from "./provider.mjs";
 import { normalizeAccountEmail } from "./account-config.mjs";
 
-export async function verifiedProviderEmail(
-  provider,
-  profile,
-  account,
-  fetchImpl = fetch,
-) {
-  if (provider === "github") {
-    const response = await fetchImpl(
-      "https://api.github.com/user/emails?per_page=100",
-      {
-        headers: {
-          Authorization: `Bearer ${account.access_token}`,
-          Accept: "application/vnd.github+json",
-        },
-        signal: AbortSignal.timeout(10000),
-        cache: "no-store",
-        redirect: "error",
-      },
-    );
-    if (!response.ok)
-      throw new ApiError("Unable to verify your sign-in email.", 401);
-    const emails = await response.json();
-    const primary =
-      Array.isArray(emails) &&
-      emails.find((e) => e.primary === true && e.verified === true);
-    return primary ? normalizeAccountEmail(primary.email) : null;
-  }
-  if (!["google", "apple"].includes(provider)) return null;
-  if (profile.email_verified !== true && profile.email_verified !== "true")
+export async function verifiedProviderEmail(provider, profile, _account) {
+  if (
+    provider !== "google" ||
+    (profile?.email_verified !== true && profile?.email_verified !== "true")
+  )
+    return null;
+  const email = normalizeAccountEmail(profile.email);
+  if (
+    !email ||
+    (!email.endsWith("@gmail.com") &&
+      !(typeof profile.hd === "string" && profile.hd.trim()))
+  )
     return null;
   return normalizeAccountEmail(profile.email);
 }
@@ -43,7 +26,7 @@ export async function provisionSocialAccount(
 ) {
   email = normalizeAccountEmail(email);
   if (
-    !["google", "apple", "github"].includes(provider) ||
+    provider !== "google" ||
     !subject ||
     String(subject).length > 255 ||
     !normalizeAccountEmail(email)

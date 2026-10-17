@@ -29,7 +29,19 @@ export async function middleware(request) {
       { status: 503 },
     );
   }
-  if (user?.isAdmin) return NextResponse.next();
+  if (user?.isAdmin) {
+    if (
+      user.enrollmentOnly &&
+      !request.nextUrl.pathname.startsWith("/admin/security")
+    )
+      return request.nextUrl.pathname.startsWith("/api/")
+        ? NextResponse.json(
+            { error: "Complete two-factor setup before using the workspace." },
+            { status: 403 },
+          )
+        : NextResponse.redirect(new URL("/admin/security", request.url));
+    return NextResponse.next();
+  }
   if (request.nextUrl.pathname.startsWith("/api/"))
     return NextResponse.json(
       { error: "Administrator sign in required" },
@@ -42,6 +54,7 @@ export const config = {
     "/admin/dashboard/:path*",
     "/admin/users/:path*",
     "/admin/testing/:path*",
+    "/admin/security/:path*",
     "/api/admin/:path*",
   ],
 };

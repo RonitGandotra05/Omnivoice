@@ -419,7 +419,7 @@ export default function SupportStudio() {
           <h1>
             Your support <em>workspace.</em>
           </h1>
-          <p>Add company knowledge, set up handoffs, and test your agent.</p>
+          <p>Build your agent and try up to 10 minutes of voice daily.</p>
         </div>
         <div className="workspace-save">
           <span className={`save-state ${dirty ? "changed" : ""}`}>
@@ -488,12 +488,12 @@ export default function SupportStudio() {
               {connected
                 ? status?.storage === "postgres"
                   ? "Documents and requests belong to this company workspace."
-                  : "Documents and requests stay in this browser. Publish knowledge only when you are ready to share extracted text with your voice agent."
+                  : "Saved on this device. Publishing shares approved text with your agent."
                 : "Demo mode: try your documents and routing. Calls and email stay off."}
             </p>
           </div>
-          <Link className="text-link" href="/">
-            Back to overview <Icon name="arrow" />
+          <Link className="text-link" href="/tutorial">
+            Setup tutorial <Icon name="arrow" />
           </Link>
         </aside>
         <section className="workspace-content" aria-busy={!!busy}>
@@ -527,10 +527,7 @@ export default function SupportStudio() {
                   <h2>
                     Company <em>details.</em>
                   </h2>
-                  <p>
-                    Start with an identity and clear boundaries. Your documents
-                    supply the facts; your team handles the exceptions.
-                  </p>
+                  <p>Set your company name, greeting, and support hours.</p>
                 </div>
                 <div className="workspace-form two-columns">
                   <label className="field">
@@ -573,17 +570,6 @@ export default function SupportStudio() {
                   <small>How your agent should speak to customers.</small>
                 </label>
                 <BusinessHours profile={profile} update={update} />
-                <div className="boundary-card">
-                  <Icon name="shield" />
-                  <div>
-                    <h3>Helpful, with clear boundaries.</h3>
-                    <p>
-                      Unknown answer? Offer a handoff. Refund or booking?
-                      Require a connected tool. Never claim that an email was
-                      delivered before delivery succeeds.
-                    </p>
-                  </div>
-                </div>
                 <button
                   className="button copper"
                   onClick={() => setSection("knowledge")}
@@ -599,8 +585,7 @@ export default function SupportStudio() {
                     Company <em>knowledge.</em>
                   </h2>
                   <p>
-                    Upload policies, FAQs, product guides, or service documents.
-                    Search stays within this company’s knowledge.
+                    Add the documents your agent should use to answer questions.
                   </p>
                 </div>
                 <input
@@ -628,19 +613,12 @@ export default function SupportStudio() {
                   </strong>
                   <span>PDF, DOCX, TXT, Markdown, JSON · 10 MB each</span>
                   <small>
-                    100 files / 5,000,000 characters total · scanned PDFs
-                    supported with OCR
+                    Up to 35 files per batch · scanned PDFs supported
                   </small>
                 </button>
                 <div className="document-heading">
                   <h3>Knowledge library</h3>
-                  <span>
-                    {documents.length} documents ·{" "}
-                    {documents
-                      .reduce((n, d) => n + d.content.length, 0)
-                      .toLocaleString()}{" "}
-                    characters
-                  </span>
+                  <span>{documents.length} documents</span>
                 </div>
                 {!documents.length && (
                   <p className="empty-note">
@@ -755,10 +733,10 @@ export default function SupportStudio() {
                   ))}
                 </div>
                 <p className="microcopy">
-                  Imported text is saved locally. Save company settings after
-                  editing. Review extracted text before using it for customer
-                  support. Publish updated knowledge to your voice agent after
-                  adding or removing documents.
+                  Review extracted text, then publish your changes.{" "}
+                  <Link href="/docs#knowledge" className="text-link">
+                    Document guide
+                  </Link>
                 </p>
               </>
             )}
@@ -768,11 +746,7 @@ export default function SupportStudio() {
                   <h2>
                     Human <em>handoff.</em>
                   </h2>
-                  <p>
-                    Route issues to the right inbox. Tickets include the
-                    caller’s question, contact details, and conversation
-                    transcript.
-                  </p>
+                  <p>Choose which team should handle each type of request.</p>
                 </div>
                 <label className="field">
                   Default support inbox
@@ -890,8 +864,8 @@ export default function SupportStudio() {
                       {connected
                         ? status?.storage === "postgres"
                           ? "Unconfigured and failed email stays available for retry below."
-                          : "Local requests stay on this device. Server email requires a connected workspace."
-                        : "Preview who receives the request. Email delivery becomes available when your workspace is connected."}
+                          : "Requests are saved locally. Email is not connected."
+                        : "Try routing a request before connecting email."}
                     </p>
                   </div>
                 </div>
@@ -950,8 +924,7 @@ export default function SupportStudio() {
                     Test your <em>agent.</em>
                   </h2>
                   <p>
-                    Ask a customer question and review the answer, its sources,
-                    and any suggested handoff.
+                    Ask a customer question. Check the answer and its sources.
                   </p>
                 </div>
                 <CallerJourney
@@ -964,6 +937,13 @@ export default function SupportStudio() {
                   <details className="voice-test-option">
                     <summary>Test with voice</summary>
                     <VoiceTest
+                      unavailableReason={
+                        !status?.voice_configured
+                          ? "Voice demo is unavailable right now. You can still try text questions below."
+                          : dirty
+                            ? "Save your changes before starting."
+                            : "Publish your knowledge in Setup & activity to start."
+                      }
                       enabled={
                         connected &&
                         !!status?.voice_configured &&
@@ -1158,7 +1138,7 @@ export default function SupportStudio() {
                       {connected
                         ? status?.storage === "postgres"
                           ? "Company documents and escalation requests are saved to your workspace."
-                          : "Saved locally on this device. Clearing browser data removes this workspace; export a backup. Publishing sends approved extracted text to your voice agent."
+                          : "Saved on this device. Export a backup before clearing browser data."
                         : "You can configure and test your agent here. Your administrator can connect voice and email when you’re ready."}
                     </p>
                   </div>

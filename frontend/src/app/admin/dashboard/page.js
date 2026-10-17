@@ -33,6 +33,9 @@ export default function Dashboard() {
     <div className="page-shell">
       <div className="page-kicker">
         <span>WORKSPACE / OVERVIEW</span>
+        <Link href="/admin/security" className="text-link">
+          Account security <Icon name="shield" />
+        </Link>
         <button className="text-link" onClick={logout}>
           Sign out <Icon name="arrow" />
         </button>
