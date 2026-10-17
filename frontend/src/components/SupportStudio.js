@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { studioRequest } from "@/lib/support/studio-client.mjs";
+import { prepareVoiceWorkspace } from "@/lib/prepare-voice.mjs";
+import { saveTextKnowledge } from "@/lib/text-knowledge.mjs";
 import BusinessHours from "@/components/BusinessHours";
 import CallerJourney from "@/components/CallerJourney";
 import CallTranscript from "@/components/CallTranscript";
@@ -23,11 +25,9 @@ import {
 } from "@/lib/workspace.mjs";
 
 const sections = [
-  ["brief", "01", "Company brief", "Your agent’s identity"],
-  ["knowledge", "02", "Knowledge", "The source of truth"],
-  ["routing", "03", "Escalations", "The human handoff"],
-  ["test", "04", "Test conversation", "Put it to work"],
-  ["connect", "05", "Setup & activity", "Readiness and call history"],
+  ["setup", "01", "Company setup", "Details, knowledge & handoffs"],
+  ["test", "02", "Voice demo", "Talk to your agent"],
+  ["connect", "03", "Activity & settings", "History and connections"],
 ];
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const api = studioRequest;
@@ -40,9 +40,15 @@ function json(body, method = "POST") {
 }
 
 export default function SupportStudio() {
-  const [section, setSection] = useState("brief");
+  const [section, setSection] = useState("setup");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("view") === "voice")
+      setSection("test");
+  }, []);
   const [profile, setProfile] = useState(initialProfile);
   const [documents, setDocuments] = useState(initialDocuments);
+  const [textTitle, setTextTitle] = useState("");
+  const [textKnowledge, setTextKnowledge] = useState("");
   const [tickets, setTickets] = useState([]);
   const [messages, setMessages] = useState([]);
   const [query, setQuery] = useState("");
@@ -166,16 +172,30 @@ export default function SupportStudio() {
     setNotice("");
     setMessages([]);
   };
+  const commitTextDraft = async (signal) => {
+    const combined = await saveTextKnowledge({
+      request: api,
+      documents,
+      title: textTitle,
+      content: textKnowledge,
+      signal,
+    });
+    setDocuments(combined);
+    setTextKnowledge("");
+    setTextTitle("");
+    return combined;
+  };
   const save = () =>
     run("Saving", async () => {
       const validation = profileError(profile);
       if (validation) throw new Error(validation);
+      const combined = await commitTextDraft();
       if (status?.storage === "postgres")
         await api("profile", json(profile, "PUT"));
       else
         await api(
           "workspace/save",
-          json({ profile, documents, tickets }, "PUT"),
+          json({ profile, documents: combined, tickets }, "PUT"),
         );
       setDirty(false);
       setNotice(
@@ -288,6 +308,7 @@ export default function SupportStudio() {
         throw new Error("Enter a question with at least 2 characters.");
       // Save configuration first in connected mode so tests use exactly what is visible.
       if (connected) {
+        await commitTextDraft();
         await api("profile", json(profile, "PUT"));
         setDirty(false);
       }
@@ -497,7 +518,10 @@ export default function SupportStudio() {
           </Link>
         </aside>
         <section className="workspace-content" aria-busy={!!busy}>
-          <fieldset className="workspace-fields" disabled={!!busy}>
+          <fieldset
+            className="workspace-fields"
+            disabled={!!busy && busy !== "Preparing voice"}
+          >
             <div className="workspace-topline">
               <span className="eyebrow">
                 {sections.find((s) => s[0] === section)?.[1]} /{" "}
@@ -521,8 +545,8 @@ export default function SupportStudio() {
                 {notice}
               </p>
             )}
-            {section === "brief" && (
-              <>
+            {section === "setup" && (
+              <section className="setup-block" id="setup-brief">
                 <div className="section-intro">
                   <h2>
                     Company <em>details.</em>
@@ -570,22 +594,17 @@ export default function SupportStudio() {
                   <small>How your agent should speak to customers.</small>
                 </label>
                 <BusinessHours profile={profile} update={update} />
-                <button
-                  className="button copper"
-                  onClick={() => setSection("knowledge")}
-                >
-                  Add company knowledge <Icon name="arrow" />
-                </button>
-              </>
+              </section>
             )}
-            {section === "knowledge" && (
-              <>
+            {section === "setup" && (
+              <section className="setup-block" id="setup-knowledge">
                 <div className="section-intro">
                   <h2>
                     Company <em>knowledge.</em>
                   </h2>
                   <p>
-                    Add the documents your agent should use to answer questions.
+                    Upload PDFs and other documents, paste text, or use both.
+                    Knowledge is optional.
                   </p>
                 </div>
                 <input
@@ -616,6 +635,61 @@ export default function SupportStudio() {
                     Up to 35 files per batch · scanned PDFs supported
                   </small>
                 </button>
+                <div className="typed-knowledge">
+                  <h3>Write or paste company knowledge</h3>
+                  <p>
+                    Use text, upload documents, or combine both. Everything
+                    joins the same knowledge library.
+                  </p>
+                  <label className="field">
+                    Note title <span className="optional">OPTIONAL</span>
+                    <input
+                      maxLength={255}
+                      value={textTitle}
+                      placeholder="Services, policies or FAQs"
+                      onChange={(e) => {
+                        setTextTitle(e.target.value);
+                        setDirty(true);
+                      }}
+                    />
+                  </label>
+                  <label className="field">
+                    Company information
+                    <textarea
+                      rows={7}
+                      maxLength={200000}
+                      value={textKnowledge}
+                      placeholder="Paste your services, policies, FAQs, or other information your agent should know…"
+                      onChange={(e) => {
+                        setTextKnowledge(e.target.value);
+                        setDirty(true);
+                      }}
+                    />
+                    <small>
+                      {textKnowledge.length.toLocaleString()} / 200,000
+                      characters
+                    </small>
+                  </label>
+                  <button
+                    type="button"
+                    className="button outline small"
+                    disabled={!!busy || textKnowledge.trim().length < 10}
+                    onClick={() =>
+                      run("Saving notes", async () => {
+                        await commitTextDraft();
+                        setNotice(
+                          "Text added alongside your uploaded documents.",
+                        );
+                      })
+                    }
+                  >
+                    Add text to knowledge <Icon name="check" />
+                  </button>
+                  <small>
+                    Unsaved text is also included when you save or start your
+                    voice demo.
+                  </small>
+                </div>
                 <div className="document-heading">
                   <h3>Knowledge library</h3>
                   <span>{documents.length} documents</span>
@@ -732,16 +806,18 @@ export default function SupportStudio() {
                     </article>
                   ))}
                 </div>
+
                 <p className="microcopy">
-                  Review extracted text, then publish your changes.{" "}
+                  Uploads are optional. Review any extracted text before
+                  starting voice.{" "}
                   <Link href="/docs#knowledge" className="text-link">
                     Document guide
                   </Link>
                 </p>
-              </>
+              </section>
             )}
-            {section === "routing" && (
-              <>
+            {section === "setup" && (
+              <section className="setup-block" id="setup-routing">
                 <div className="section-intro">
                   <h2>
                     Human <em>handoff.</em>
@@ -915,7 +991,21 @@ export default function SupportStudio() {
                       )}
                   </article>
                 ))}
-              </>
+              </section>
+            )}
+            {section === "setup" && (
+              <div className="setup-actions">
+                <button
+                  type="button"
+                  className="button copper"
+                  onClick={() => setSection("test")}
+                >
+                  Talk to your agent <Icon name="arrow" />
+                </button>
+                <span>
+                  Settings and any typed notes are saved when you start.
+                </span>
+              </div>
             )}
             {section === "test" && (
               <>
@@ -924,165 +1014,192 @@ export default function SupportStudio() {
                     Test your <em>agent.</em>
                   </h2>
                   <p>
-                    Ask a customer question. Check the answer and its sources.
+                    Hear your agent in a live conversation. Documents are
+                    optional; caller details are collected as you talk.
                   </p>
                 </div>
-                <CallerJourney
-                  profile={profile}
-                  connected={connected}
-                  dirty={dirty}
-                  local={status?.storage !== "postgres"}
-                />
                 {connected && (
-                  <details className="voice-test-option">
-                    <summary>Test with voice</summary>
-                    <VoiceTest
-                      unavailableReason={
-                        !status?.voice_configured
-                          ? "Voice demo is unavailable right now. You can still try text questions below."
-                          : dirty
-                            ? "Save your changes before starting."
-                            : "Publish your knowledge in Setup & activity to start."
+                  <VoiceTest
+                    companyName={profile.company_name}
+                    enabled={!!status?.voice_configured && !busy}
+                    unavailableReason="Voice is unavailable right now. Please try again later."
+                    onPrepare={async (signal) => {
+                      if (operation.current)
+                        throw new Error(
+                          "Wait for the current change to finish.",
+                        );
+                      operation.current = true;
+                      setBusy("Preparing voice");
+                      try {
+                        const combined = await commitTextDraft(signal);
+                        signal.throwIfAborted();
+                        const result = await prepareVoiceWorkspace({
+                          request: api,
+                          profile,
+                          documents: combined,
+                          tickets,
+                          mode: status?.storage,
+                          signal,
+                          onSaved: () => setDirty(false),
+                        });
+                        setPublishState(result);
+                      } finally {
+                        operation.current = false;
+                        setBusy("");
                       }
-                      enabled={
-                        connected &&
-                        !!status?.voice_configured &&
-                        !dirty &&
-                        publishState?.status === "complete" &&
-                        !publishState?.result?.needs_publish
-                      }
-                    />
-                  </details>
+                    }}
+                  />
                 )}
-                <KnowledgeChecks
-                  connected={connected}
-                  request={api}
-                  workspaceDirty={dirty}
-                  onSaved={() =>
-                    api("voice/publish")
-                      .then(setPublishState)
-                      .catch(() => {})
-                  }
-                />
-                <div className="test-agent-bar">
-                  <span className="status-dot" />
-                  <strong>{profile.company_name}</strong>
-                  <span>
-                    {
-                      documents.filter((doc) => doc.status !== "needs_review")
-                        .length
-                    }{" "}
-                    ready sources
-                  </span>
-                </div>
-                <div className="test-transcript" aria-live="polite">
-                  <div className="test-bubble agent">
-                    <small>AGENT</small>
-                    <p>{profile.greeting}</p>
+                <details className="voice-test-option">
+                  <summary>
+                    Advanced: simulate caller details and handoffs
+                  </summary>
+                  <CallerJourney
+                    profile={profile}
+                    connected={connected}
+                    dirty={dirty}
+                    local={status?.storage !== "postgres"}
+                  />
+                </details>
+                <details className="voice-test-option">
+                  <summary>
+                    Prefer typing? Preview answers and knowledge checks
+                  </summary>
+                  <KnowledgeChecks
+                    connected={connected}
+                    request={api}
+                    workspaceDirty={dirty}
+                    onSaved={() =>
+                      api("voice/publish")
+                        .then(setPublishState)
+                        .catch(() => {})
+                    }
+                  />
+                  <div className="test-agent-bar">
+                    <span className="status-dot" />
+                    <strong>{profile.company_name}</strong>
+                    <span>
+                      {
+                        documents.filter((doc) => doc.status !== "needs_review")
+                          .length
+                      }{" "}
+                      ready sources
+                    </span>
                   </div>
-                  {messages.map((m, i) => (
-                    <div key={i} className={`test-bubble ${m.role}`}>
-                      <small>{m.role.toUpperCase()}</small>
-                      <p>{m.text}</p>
-                      {m.result?.sources.map((source, n) => (
-                        <details className="source-evidence" key={n}>
-                          <summary>Source: {source.document}</summary>
-                          <p>{source.excerpt}</p>
-                        </details>
-                      ))}
-                      {m.ticketId && (
-                        <span className="ticket-reference">
-                          Ticket #{m.ticketId.slice(0, 8)} created
-                        </span>
-                      )}
+                  <div className="test-transcript" aria-live="polite">
+                    <div className="test-bubble agent">
+                      <small>AGENT</small>
+                      <p>{profile.greeting}</p>
                     </div>
-                  ))}
-                </div>
-                {!messages.length && (
-                  <div className="test-suggestions">
-                    {[
-                      "What is your return policy?",
-                      "When are you open?",
-                      "I need a human about a billing error",
-                    ].map((q) => (
-                      <button disabled={!!busy} key={q} onClick={() => ask(q)}>
-                        {q}
-                        <Icon name="arrow" />
-                      </button>
+                    {messages.map((m, i) => (
+                      <div key={i} className={`test-bubble ${m.role}`}>
+                        <small>{m.role.toUpperCase()}</small>
+                        <p>{m.text}</p>
+                        {m.result?.sources.map((source, n) => (
+                          <details className="source-evidence" key={n}>
+                            <summary>Source: {source.document}</summary>
+                            <p>{source.excerpt}</p>
+                          </details>
+                        ))}
+                        {m.ticketId && (
+                          <span className="ticket-reference">
+                            Ticket #{m.ticketId.slice(0, 8)} created
+                          </span>
+                        )}
+                      </div>
                     ))}
                   </div>
-                )}
-                <form
-                  className="question-entry"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    ask();
-                  }}
-                >
-                  <input
-                    aria-label="Caller question"
-                    value={query}
-                    maxLength={2000}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Ask as a customer would…"
-                  />
-                  <button
-                    className="button copper small"
-                    disabled={!!busy || query.trim().length < 2}
-                  >
-                    {busy === "Searching" ? "Searching…" : "Send"}
-                    <Icon name="arrow" />
-                  </button>
-                </form>
-                {last?.result?.needs_escalation && !last.ticketId && (
-                  <div className="handoff-form">
-                    <div>
-                      <h3>Offer a human follow-up</h3>
-                      <p>
-                        {last.result.routing.team} →{" "}
-                        {last.result.routing.recipient}
-                      </p>
+                  {!messages.length && (
+                    <div className="test-suggestions">
+                      {[
+                        "What is your return policy?",
+                        "When are you open?",
+                        "I need a human about a billing error",
+                      ].map((q) => (
+                        <button
+                          disabled={!!busy}
+                          key={q}
+                          onClick={() => ask(q)}
+                        >
+                          {q}
+                          <Icon name="arrow" />
+                        </button>
+                      ))}
                     </div>
-                    <label className="field">
-                      Callback email <span className="optional">OPTIONAL</span>
-                      <input
-                        type="email"
-                        value={contact}
-                        onChange={(e) => setContact(e.target.value)}
-                        placeholder="customer@example.com"
-                      />
-                    </label>
-                    <button
-                      className="button dark small"
-                      disabled={!!busy}
-                      onClick={escalate}
-                    >
-                      {connected
-                        ? "Create escalation ticket"
-                        : "Preview escalation ticket"}
-                      <Icon name="arrow" />
-                    </button>
-                    <small>
-                      {connected
-                        ? status?.storage === "postgres"
-                          ? "Creates a saved ticket and attempts configured email delivery."
-                          : "Saves the request in this browser. No email is sent."
-                        : "Demo only. No email is sent and no live action is taken."}
-                    </small>
-                  </div>
-                )}
-                {messages.length > 0 && (
-                  <button
-                    className="text-link"
-                    disabled={!!busy}
-                    onClick={() => {
-                      setMessages([]);
-                      setContact("");
+                  )}
+                  <form
+                    className="question-entry"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      ask();
                     }}
                   >
-                    Clear conversation <Icon name="reset" />
-                  </button>
-                )}
+                    <input
+                      aria-label="Caller question"
+                      value={query}
+                      maxLength={2000}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Ask as a customer would…"
+                    />
+                    <button
+                      className="button copper small"
+                      disabled={!!busy || query.trim().length < 2}
+                    >
+                      {busy === "Searching" ? "Searching…" : "Send"}
+                      <Icon name="arrow" />
+                    </button>
+                  </form>
+                  {last?.result?.needs_escalation && !last.ticketId && (
+                    <div className="handoff-form">
+                      <div>
+                        <h3>Offer a human follow-up</h3>
+                        <p>
+                          {last.result.routing.team} →{" "}
+                          {last.result.routing.recipient}
+                        </p>
+                      </div>
+                      <label className="field">
+                        Callback email{" "}
+                        <span className="optional">OPTIONAL</span>
+                        <input
+                          type="email"
+                          value={contact}
+                          onChange={(e) => setContact(e.target.value)}
+                          placeholder="customer@example.com"
+                        />
+                      </label>
+                      <button
+                        className="button dark small"
+                        disabled={!!busy}
+                        onClick={escalate}
+                      >
+                        {connected
+                          ? "Create escalation ticket"
+                          : "Preview escalation ticket"}
+                        <Icon name="arrow" />
+                      </button>
+                      <small>
+                        {connected
+                          ? status?.storage === "postgres"
+                            ? "Creates a saved ticket and attempts configured email delivery."
+                            : "Saves the request in this browser. No email is sent."
+                          : "Demo only. No email is sent and no live action is taken."}
+                      </small>
+                    </div>
+                  )}
+                  {messages.length > 0 && (
+                    <button
+                      className="text-link"
+                      disabled={!!busy}
+                      onClick={() => {
+                        setMessages([]);
+                        setContact("");
+                      }}
+                    >
+                      Clear conversation <Icon name="reset" />
+                    </button>
+                  )}
+                </details>
               </>
             )}
             {section === "connect" && (
@@ -1105,7 +1222,20 @@ export default function SupportStudio() {
                 </div>
                 <div className="readiness-list">
                   {readiness.map((item) => (
-                    <button key={item.id} onClick={() => setSection(item.id)}>
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setSection("setup");
+                        requestAnimationFrame(() =>
+                          document
+                            .getElementById(`setup-${item.id}`)
+                            ?.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                            }),
+                        );
+                      }}
+                    >
                       <span
                         className={
                           item.complete

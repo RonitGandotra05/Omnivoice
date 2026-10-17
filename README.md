@@ -21,11 +21,9 @@ OmniVoice turns company documents and support workflows into a configurable call
 
 | Your workspace | What it does |
 | :--- | :--- |
-| **01 · Company brief** | Identity, greeting, tone, human hours, timezone and holiday closures. |
-| **02 · Knowledge** | Batch-import PDF, DOCX, TXT, Markdown and JSON. Extract text locally; review OCR before use. |
-| **03 · Escalations** | Route issues and save human/callback requests. Optional PostgreSQL enables server email and shared records. |
-| **04 · Test conversation** | Source-cited text answers, saved regression checks, caller journeys and configured live browser voice. |
-| **05 · Setup & activity** | Publish approved knowledge, review caller details and follow conversations. |
+| **01 · Company setup** | Company identity, greeting, tone, hours, handoff contacts, uploaded documents and typed knowledge in one place. Both knowledge inputs feed the same agent. |
+| **02 · Voice demo** | A live browser conversation with an audio-reactive visual, conversational caller intake and optional text previews. |
+| **03 · Activity & settings** | Collected caller details, human-support requests, conversation history and connection settings. |
 
 > **Local first.** Workspace data stays in this browser until you explicitly publish approved extracted text to your voice agent. Original documents are not uploaded. Local requests do not send email or make phone calls.
 
@@ -101,7 +99,12 @@ The local verification suite (kept out of commits as requested) covers IndexedDB
 
 - **[Next.js migration and operations](docs/nextjs-migration.md)** — current application architecture and deployment.
 - **[Security boundaries](docs/security.md)** — local storage, server secrets and retained Python security controls.
-- **[Open-source research](docs/open-source-research.md)** — source review, licences and adopted patterns.
 - **[Earlier Python integration guide](docs/company-integration.md)** — retained implementation, disconnected from the default app.
 
 The Python code remains available in `backend/`. Nothing in the current studio requires it to run.
+
+## License
+
+**Proprietary · All rights reserved.** OmniVoice's original code, design and assets belong to Ronit Gandotra. Use, copying, modification, redistribution, hosting or commercial exploitation requires prior written permission. See [LICENSE](LICENSE). Request permission through [GitHub](https://github.com/RonitGandotra05) or [LinkedIn](https://www.linkedin.com/in/ronitgandotra).
+
+Third-party components remain subject to their respective licenses and notices.

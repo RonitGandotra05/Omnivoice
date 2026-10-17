@@ -55,5 +55,6 @@
   "overrides": {
     "postcss": "^8.5.30",
     "nodemailer": "$nodemailer"
-  }
+  },
+  "license": "UNLICENSED"
 }

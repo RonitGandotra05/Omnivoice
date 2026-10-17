@@ -32,8 +32,9 @@ export default function Guide() {
           <p className="eyebrow">01 / KNOWLEDGE</p>
           <h2>Bring the answers.</h2>
           <p>
-            Upload FAQs, service guides, and policies. Review the extracted
-            text, then publish it to your agent.
+            In Company setup, upload FAQs, service guides and policies, or paste
+            text alongside them. Both sources are used together. Review
+            extracted text before starting your agent.
           </p>
           <ul>
             <li>PDF, DOCX, TXT, Markdown, and JSON</li>
@@ -79,9 +80,10 @@ export default function Guide() {
             <strong>10 minutes daily</strong>.
           </p>
           <p>
-            In the studio, open{" "}
-            <strong>Test conversation → Test with voice</strong>. Save and
-            publish your knowledge first, then allow microphone access.
+            In the studio, open <strong>Test conversation</strong>, select play,
+            and allow microphone access. Your agent is prepared automatically.
+            Add company documents for specific answers, or skip uploads and try
+            a general support conversation.
           </p>
           <details>
             <summary>How demo time works</summary>

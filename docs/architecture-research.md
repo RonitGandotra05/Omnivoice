@@ -1,4 +1,4 @@
-# Open-source voice-agent research · 16 October 2026
+# Voice-agent architecture research · 16 October 2026
 
 **Recommendation:** keep ElevenLabs Agents as the live conversation engine. Adopt evaluation and release-management patterns from Pipecat, LiveKit and Dograh around it. These projects are ahead of our app in important areas, but none of the inspected code establishes that replacing ElevenLabs would improve our real call quality, latency or total operating cost. We have not benchmarked their runtimes.
 

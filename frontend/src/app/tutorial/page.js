@@ -3,22 +3,22 @@ import Icon from "@/components/ui/Icon";
 export const metadata = {
   title: "Your first agent",
   description:
-    "Build a sample customer support agent with a short, practical OmniVoice tutorial.",
+    "Set up your company in one place, then talk to your support agent.",
 };
 export default function Tutorial() {
   return (
     <div className="page-shell guide-page tutorial-page">
       <header className="guide-heading">
-        <p className="eyebrow">FOLLOW ALONG</p>
+        <p className="eyebrow">YOUR FIRST AGENT</p>
         <h1>
-          Your first agent. <em>Step by step.</em>
+          One setup. <em>Then start talking.</em>
         </h1>
         <p>
-          Sign in with a verified account, then follow this fictional repair
-          business. Replace the examples with your own.
+          Sign in, introduce your company, and hear your support agent in
+          action.
         </p>
         <Link href="/try-for-free" className="button copper">
-          Open the studio <Icon name="arrow" />
+          Set up your company <Icon name="arrow" />
         </Link>
       </header>
       <ol className="tutorial-steps">
@@ -27,18 +27,28 @@ export default function Tutorial() {
             01
           </span>
           <div>
-            <h2>Introduce your company.</h2>
+            <h2>Everything in Company setup.</h2>
             <p>
-              In <strong>Company brief</strong>, enter “Northstar Repairs,”
-              choose a friendly tone, and set Monday–Friday, 9 am–5 pm in your
-              timezone.
+              Add your company name, greeting, tone, support hours and handoff
+              contacts on one page.
+            </p>
+            <p>
+              Upload PDFs and other documents, write or paste knowledge, or
+              combine both. All sources feed the same agent. You can also skip
+              knowledge for a general support demo.
             </p>
             <div className="guide-example">
-              <span>Example greeting</span>
+              <span>Example company notes</span>
               <blockquote>
-                Hi, you’ve reached Northstar Repairs. How can I help today?
+                Northstar Repairs fixes laptops and desktop computers. We’re
+                open Monday–Friday, 9 am–5 pm. A technician must inspect a
+                device before confirming a repair price.
               </blockquote>
             </div>
+            <p className="guide-caption">
+              Review extracted document text before use. Typed notes are
+              included when you save or start your voice demo.
+            </p>
           </div>
         </li>
         <li className="panel">
@@ -46,89 +56,37 @@ export default function Tutorial() {
             02
           </span>
           <div>
-            <h2>Add a small FAQ.</h2>
+            <h2>Talk to your agent.</h2>
             <p>
-              Save these example answers as a TXT file and upload it in{" "}
-              <strong>Knowledge</strong>. Review the extracted text.
+              Select <strong>Talk to your agent</strong>, press play, and allow
+              microphone access. Your settings and knowledge are prepared
+              automatically.
             </p>
-            <pre className="guide-example">{`What do you repair?\nWe repair laptops and desktop computers.\n\nWhat are your hours?\nMonday to Friday, 9 am to 5 pm.\n\nCan I get a repair quote?\nA technician must inspect the device before confirming a price.`}</pre>
+            <div className="guide-example">
+              <span>Say it aloud</span>
+              <blockquote>Hi, I’m Alex. Can I get a repair quote?</blockquote>
+            </div>
+            <p>
+              The agent asks for caller details during the conversation. Try
+              requesting a human, then check collected details and requests in
+              Activity & settings.
+            </p>
             <p className="guide-caption">
-              Use fictional details for testing. Replace them before publishing
-              a real company agent.
+              The browser demo records human-support requests; it does not
+              transfer a phone call or send email on its own.
             </p>
-          </div>
-        </li>
-        <li className="panel">
-          <span className="tutorial-number" aria-hidden="true">
-            03
-          </span>
-          <div>
-            <h2>Choose the human handoff.</h2>
-            <p>
-              In <strong>Escalations</strong>, add a Repairs team with keywords
-              “quote, repair, technician.” Use your team’s real inbox when
-              setting up your business.
-            </p>
-            <div className="guide-example">
-              <span>Try asking</span>
-              <blockquote>
-                I’d like to speak to a technician about a repair quote.
-              </blockquote>
-            </div>
-            <p>
-              The demo should record a human-support request. It does not send
-              email or transfer a phone call by itself.
-            </p>
-          </div>
-        </li>
-        <li className="panel">
-          <span className="tutorial-number" aria-hidden="true">
-            04
-          </span>
-          <div>
-            <h2>Check the answers.</h2>
-            <p>
-              Open <strong>Test conversation</strong>. Ask about repairs and
-              hours, then check the source shown with each answer.
-            </p>
-            <div className="guide-example">
-              <span>Also try</span>
-              <blockquote>How much will my repair cost?</blockquote>
-            </div>
-            <p>
-              Your agent should offer a handoff rather than invent a price. Try
-              an after-hours question in the caller journey, too.
-            </p>
-          </div>
-        </li>
-        <li className="panel">
-          <span className="tutorial-number" aria-hidden="true">
-            05
-          </span>
-          <div>
-            <h2>Have a conversation.</h2>
-            <p>
-              Save your workspace. In <strong>Setup & activity</strong>, publish
-              the reviewed knowledge. Return to{" "}
-              <strong>Test conversation → Test with voice</strong> and start
-              your demo.
-            </p>
-            <p>
-              Allow microphone access and try the same questions aloud. Review
-              any captured caller details and handoff requests afterward.
-            </p>
-            <Link href="/docs#voice-demo" className="text-link">
-              Demo limits and details <Icon name="right" />
+            <Link href="/try-for-free?view=voice" className="text-link">
+              Already set up? Start your voice demo <Icon name="right" />
             </Link>
           </div>
         </li>
       </ol>
       <div className="guide-next">
         <p>Make it your company’s voice.</p>
-        <Link className="button copper" href="/try-for-free">
-          Build your agent <Icon name="arrow" />
+        <Link href="/try-for-free" className="button copper">
+          Open your workspace <Icon name="arrow" />
         </Link>
-        <Link className="text-link" href="/docs">
+        <Link href="/docs" className="text-link">
           Read the guide <Icon name="right" />
         </Link>
       </div>

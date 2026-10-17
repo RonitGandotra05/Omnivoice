@@ -135,7 +135,7 @@ Set its HMAC secret as ELEVENLABS_WEBHOOK_SECRET. Enable retries in the provider
 
 In **Test conversation → Saved knowledge checks**, add representative questions and expected answer phrases/source filenames, or expect a human handoff and optional team. Save the company workspace first, then save/run checks. Configured failures block publishing at submission and again in the worker. Empty suites are `not_run`, not successful tests. Cases and reports are encrypted using the support-field keyring. They test local extractive search/routing; native ElevenLabs RAG and voice still need credentialed testing.
 
-Successful publishing stores a revision receipt with time, document count and check counts. Saved profile/source/check edits, agent mapping, generated prompt or embedding-model changes mark the last publication outdated. Receipt history is metadata, not a full rollback snapshot. See [the research and implementation report](open-source-research.md).
+Successful publishing stores a revision receipt with time, document count and check counts. Saved profile/source/check edits, agent mapping, generated prompt or embedding-model changes mark the last publication outdated. Receipt history is metadata, not a full rollback snapshot. See [the research and implementation report](architecture-research.md).
 
 ## Document ingestion
 

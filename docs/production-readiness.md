@@ -26,7 +26,7 @@ This is a production-hardening pass, **not a claim that every possible company, 
 
 ## OCR quality boundaries
 
-Tesseract is open source and runs locally; uploaded text is not sent to an OCR cloud service. It is not universally the best model. Confidence is a heuristic, not a guarantee that prices, dates, account numbers or policy details are correct. Handwriting, low-resolution scans, complex tables, image-only diagrams, unusual scripts and mixed layouts need human review and sometimes a specialist pipeline. Native text PDFs may also omit information present only in embedded images.
+Tesseract runs locally; uploaded text is not sent to an OCR cloud service. It is not universally the best model. Confidence is a heuristic, not a guarantee that prices, dates, account numbers or policy details are correct. Handwriting, low-resolution scans, complex tables, image-only diagrams, unusual scripts and mixed layouts need human review and sometimes a specialist pipeline. Native text PDFs may also omit information present only in embedded images.
 
 Install Tesseract with `eng` and `osd` packs. Set `OCR_LANGUAGES` for other installed packs. For higher-accuracy LSTM data you can install language models from the official `tessdata_best` repository and set `TESSDATA_PREFIX`; test the tradeoff against your real corpus. There are no automatic model downloads at request time.
 

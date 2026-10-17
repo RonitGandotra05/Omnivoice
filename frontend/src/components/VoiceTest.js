@@ -9,6 +9,7 @@ import {
   searchVoiceKnowledge,
   recordVoiceTranscript,
 } from "@/lib/support/studio-client.mjs";
+import VoiceOrb from "@/components/VoiceOrb";
 import CallerDetails from "@/components/CallerDetails";
 import Icon from "@/components/ui/Icon";
 import Link from "next/link";
@@ -26,7 +27,7 @@ function saveTranscriptSnapshot(value) {
   });
 }
 
-function VoiceSession({ enabled, unavailableReason }) {
+function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
   const [error, setError] = useState("");
   const [allowance, setAllowance] = useState(null);
   const [remaining, setRemaining] = useState(ACCOUNT_DEMO_SECONDS);
@@ -141,11 +142,23 @@ function VoiceSession({ enabled, unavailableReason }) {
     if (!attempt) return;
     setStarting(true);
     setError("");
+    live.current = { id: "", transcript: [], started: 0, recorded: false };
     setTranscript([]);
     setConversationId("");
     setCaller(null);
     setTrackingError("");
     try {
+      if (!navigator.mediaDevices?.getUserMedia)
+        throw new Error(
+          "Use a browser with microphone support over HTTPS or localhost.",
+        );
+      const permission = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      permission.getTracks().forEach((track) => track.stop());
+      if (!guard.current.current(attempt)) return;
+      await onPrepare?.(attempt.controller.signal);
+      if (!guard.current.current(attempt)) return;
       const data = await studioRequest("voice/session", {
         method: "POST",
         signal: attempt.controller.signal,
@@ -164,89 +177,80 @@ function VoiceSession({ enabled, unavailableReason }) {
             JSON.stringify(await searchVoiceKnowledge(values.query)),
         },
       });
+      if (!guard.current.current(attempt)) await conversation.endSession();
     } catch (err) {
       refreshAllowance();
       if (guard.current.current(attempt))
         setError(
           err.name === "TimeoutError"
             ? "The voice connection timed out. Please try again."
-            : err.message,
+            : err.name === "NotAllowedError"
+              ? "Microphone access was blocked. Allow it in your browser settings and try again."
+              : err.message,
         );
     } finally {
       if (guard.current.current(attempt)) setStarting(false);
       guard.current.finish(attempt);
     }
   };
+  const connected = conversation.status === "connected";
+  const state = connected
+    ? conversation.isSpeaking
+      ? "speaking"
+      : "listening"
+    : starting || conversation.status === "connecting"
+      ? "connecting"
+      : "idle";
+  const label =
+    state === "speaking"
+      ? "Your agent is speaking"
+      : state === "listening"
+        ? "Listening to you"
+        : state === "connecting"
+          ? "Preparing your conversation…"
+          : "Hear your company’s voice";
   return (
-    <div className="voice-test-card">
-      <div className="document-heading">
-        <h3>
-          <Icon name="phone" /> Voice conversation test
-        </h3>
-        <span className="tag">{conversation.status}</span>
+    <section
+      className="voice-test-card live-voice-card"
+      aria-label="Live voice demo"
+    >
+      <div className="live-voice-heading">
+        <p className="eyebrow">A REAL CONVERSATION</p>
+        <h3>{companyName || "Your support agent"}</h3>
+        <p>No script to fill in. Just start talking.</p>
       </div>
-      <p>Try a support call in your browser. Microphone access is required.</p>
-      <div className="demo-limit-note">
-        <strong>
-          {allowance?.account_required
-            ? "Sign in to try the demo"
-            : "10-minute account demo"}
-        </strong>
-        <p>Available daily. Your demo time is reserved when you start.</p>
-        <Link
-          className="text-link"
-          href={allowance?.signed_in ? "/account/settings" : "/account"}
-        >
-          {allowance?.signed_in
-            ? "Account settings"
-            : "Create account / sign in"}
-        </Link>
-        <Link className="text-link" href="/docs#voice-demo">
-          Demo details
-        </Link>
-      </div>
-      {allowance &&
-        !allowance.account_required &&
-        !allowance.verification_required &&
-        !allowance.available &&
-        conversation.status !== "connected" && (
-          <p role="status">
-            {allowance.error ||
-              (allowance.retry_at
-                ? `Your next demo is available ${new Date(allowance.retry_at).toLocaleString()}.`
-                : "The daily voice allowance has been reserved. Please try again after 24 hours.")}{" "}
-            You can still explore the text preview and company setup.
-          </p>
-        )}
-      {conversation.status === "connected" ? (
-        <>
-          <p role="status">
-            {conversation.isSpeaking ? "Agent speaking…" : "Listening…"} ·{" "}
-            {remaining}s remaining
-          </p>
-          <button
-            className="button dark small"
-            onClick={() => conversation.endSession()}
-          >
-            End conversation
-          </button>
-        </>
-      ) : (
+      <VoiceOrb conversation={conversation} state={state}>
         <button
-          className="button outline small"
-          disabled={
-            !enabled ||
-            !allowance?.available ||
-            starting ||
-            conversation.status !== "disconnected"
+          type="button"
+          className="voice-orb-button"
+          aria-label={
+            connected
+              ? "End voice conversation"
+              : starting
+                ? "Preparing voice conversation"
+                : "Start voice conversation"
           }
-          onClick={start}
+          disabled={
+            !connected &&
+            (!enabled ||
+              !allowance?.available ||
+              starting ||
+              conversation.status !== "disconnected")
+          }
+          onClick={connected ? () => conversation.endSession() : start}
         >
-          {starting ? "Connecting…" : "Start voice conversation"}
-          <Icon name="phone" />
+          <Icon name={connected ? "phone" : "play"} />
         </button>
-      )}
-      {starting && (
+      </VoiceOrb>
+      <div className="voice-live-status" role="status" aria-live="polite">
+        <strong>{label}</strong>
+        <span>
+          {connected
+            ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} remaining · Select the phone to end`
+            : "Microphone required · Up to 10 minutes daily"}
+        </span>
+      </div>
+      {(starting || conversation.status === "connecting") && (
         <button
           type="button"
           className="text-link"
@@ -259,9 +263,35 @@ function VoiceSession({ enabled, unavailableReason }) {
           Cancel connection
         </button>
       )}
-      {!enabled && (
+      {!enabled &&
+        !starting &&
+        !connected &&
+        conversation.status !== "connecting" && (
+          <p className="voice-help">
+            {unavailableReason || "Voice is unavailable right now."}
+          </p>
+        )}
+      {allowance?.account_required && (
+        <Link className="button copper" href="/account">
+          Sign in to talk <Icon name="arrow" />
+        </Link>
+      )}
+      {allowance &&
+        !allowance.account_required &&
+        !allowance.available &&
+        !connected &&
+        !starting &&
+        conversation.status !== "connecting" && (
+          <p role="status">
+            {allowance.error ||
+              (allowance.retry_at
+                ? `Your next demo is available ${new Date(allowance.retry_at).toLocaleString()}.`
+                : "Your daily demo time has been reserved. Come back tomorrow.")}
+          </p>
+        )}
+      {!connected && !starting && (
         <small>
-          {unavailableReason || "Save and publish your workspace to start."}
+          Starting shares your reviewed knowledge with your voice agent.
         </small>
       )}
       {error && (
@@ -294,7 +324,7 @@ function VoiceSession({ enabled, unavailableReason }) {
           </div>
         </details>
       )}
-    </div>
+    </section>
   );
 }
 export default function VoiceTest(props) {

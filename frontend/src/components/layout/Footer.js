@@ -16,7 +16,9 @@ export default function Footer() {
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} OmniVoice Labs</span>
+        <span>
+          © {new Date().getFullYear()} Ronit Gandotra. All rights reserved.
+        </span>
         <div className="creator-credit">
           <span>
             Made by{" "}
@@ -29,20 +31,22 @@ export default function Footer() {
               Ronit Gandotra
             </a>
           </span>
-          <a
-            href="https://github.com/RonitGandotra05"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            GitHub <span aria-hidden="true">↗</span>
-          </a>
-          <a
-            href="https://www.linkedin.com/in/ronitgandotra"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            LinkedIn <span aria-hidden="true">↗</span>
-          </a>
+          <nav className="creator-socials" aria-label="Creator profiles">
+            <a
+              href="https://github.com/RonitGandotra05"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub <span aria-hidden="true">↗</span>
+            </a>
+            <a
+              href="https://www.linkedin.com/in/ronitgandotra"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              LinkedIn <span aria-hidden="true">↗</span>
+            </a>
+          </nav>
         </div>
       </div>
     </footer>
