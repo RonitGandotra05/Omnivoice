@@ -32,7 +32,7 @@ export default function RootLayout({ children }) {
       <body>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('ov-theme')||'system';document.documentElement.dataset.theme=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}catch(e){}`,
+            __html: `try{var t=localStorage.getItem('ov-theme')||'light';document.documentElement.dataset.theme=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}catch(e){}`,
           }}
         />
         <AccountPreferences>

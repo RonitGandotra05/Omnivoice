@@ -23,8 +23,17 @@ export default function AccountSettings() {
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   useEffect(() => {
-    if (account) setName(account.name);
-  }, [account]);
+    if (account?.name) setName(account.name);
+  }, [account?.name]);
+  useEffect(() => {
+    const update = () => refresh({ preserveTheme: true });
+    const timer = setInterval(update, 15000);
+    window.addEventListener("focus", update);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", update);
+    };
+  }, [refresh]);
   async function action(kind, body = {}) {
     setBusy(kind);
     setError("");
