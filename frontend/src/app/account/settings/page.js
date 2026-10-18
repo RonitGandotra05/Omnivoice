@@ -222,15 +222,22 @@ export default function AccountSettings() {
                   allowance?.budget_seconds || ACCOUNT_DEMO_SECONDS,
                 )}
                 max={allowance?.budget_seconds || ACCOUNT_DEMO_SECONDS}
-                aria-label="Daily voice demo time reserved"
+                aria-label="Daily voice demo time used"
               />
               <p>
                 {account.email_verified
                   ? "Up to 10 minutes every 24 hours."
                   : "Verify your email for up to 10 minutes every 24 hours."}{" "}
-                Time is reserved when your conversation starts.
+                Only actual conversation time is charged. Unused time returns
+                after the call is verified.
               </p>
-              {allowance?.retry_at && (
+              {allowance?.pending_seconds > 0 && (
+                <small>
+                  Your last connection is being checked. Unused minutes will
+                  return automatically.
+                </small>
+              )}
+              {!allowance?.pending_seconds && allowance?.retry_at && (
                 <small>
                   Next availability:{" "}
                   {new Date(allowance.retry_at).toLocaleString()}

@@ -4,7 +4,7 @@ Tests for Pydantic schema validation.
 
 import pytest
 from pydantic import ValidationError
-from app.models.schemas import CompanyCreate, CompanyUpdate, QueryRequest
+from app.models.schemas import CompanyCreate, CompanyUpdate, QueryRequest, TryForFreeRequest, TrialAgentType
 
 
 class TestCompanyCreate:
@@ -95,4 +95,37 @@ class TestQueryRequest:
                 query="Hello",
                 twilio_number="not-a-phone",
                 customer_phone="+14155559999",
+            )
+
+
+class TestTryForFreeRequest:
+    """Test trial call request validation."""
+
+    def test_valid_trial_request(self):
+        req = TryForFreeRequest(
+            company_name="Acme Support",
+            agent_type=TrialAgentType.customer_support,
+            phone_number="+14155551234",
+            company_context="Hours are 9 to 5. Offer support and escalate billing questions.",
+            special_instructions="Be concise.",
+        )
+        assert req.company_name == "Acme Support"
+        assert req.agent_type == TrialAgentType.customer_support
+
+    def test_invalid_trial_phone_rejected(self):
+        with pytest.raises(ValidationError):
+            TryForFreeRequest(
+                company_name="Acme",
+                agent_type=TrialAgentType.booking,
+                phone_number="555-1234",
+                company_context="We book tables between 5 PM and 10 PM.",
+            )
+
+    def test_short_company_context_rejected(self):
+        with pytest.raises(ValidationError):
+            TryForFreeRequest(
+                company_name="Acme",
+                agent_type=TrialAgentType.feedback,
+                phone_number="+14155551234",
+                company_context="Too short",
             )

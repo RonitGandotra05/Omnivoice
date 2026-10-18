@@ -7,10 +7,8 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 # Override env vars before importing the app so Settings uses test values.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///test.db")
-os.environ.setdefault("CEREBRAS_API_KEY", "test-key")
-os.environ.setdefault("OPENAI_API_KEY", "")
-os.environ.setdefault("PINECONE_API_KEY", "")
 
 from app.main import app  # noqa: E402
 

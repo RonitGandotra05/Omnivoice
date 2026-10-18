@@ -41,6 +41,9 @@ export async function provisionSocialAccount(
   const db = await databasePool(env).connect();
   try {
     await db.query("BEGIN");
+    await db.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+      "google-subject:" + String(subject),
+    ]);
     // Serialize social provisioning; the email index also protects manual registrations.
     await db.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
       "account-email:" + email,

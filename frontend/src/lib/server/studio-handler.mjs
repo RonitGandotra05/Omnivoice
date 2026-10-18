@@ -5,6 +5,9 @@ import {
   demoIdentities,
   demoAllowance,
   reserveDemo,
+  cancelUnusedDemo,
+  bindDemoConversation,
+  releaseUnissuedDemo,
   protectDemoOperation,
 } from "./demo-protection.mjs";
 import { demoAccount } from "./demo-accounts.mjs";
@@ -216,7 +219,7 @@ function makeAgent(profile, knowledge, owner, env, mode) {
         ? {
             call_limits: {
               agent_concurrency_limit: 1,
-              daily_limit: 1,
+              daily_limit: 100,
               bursting_enabled: false,
             },
           }
@@ -783,6 +786,17 @@ export function createStudioHandler({
             message: "Company knowledge and greeting published.",
           });
         }
+        if (path === "voice/cancel") {
+          const cancelled =
+            protectedDemo &&
+            (await cancelUnusedDemo(
+              body.reservation_id,
+              voiceAccount.id,
+              env,
+              provider,
+            ));
+          return respond({ ok: true, cancelled });
+        }
         if (path === "voice/session") {
           const grant = readGrant(body.agent_token, "agent", owner, env);
           if (postgresEnabled(env) && grant.tenant !== env.SUPPORT_TENANT_ID)
@@ -790,8 +804,7 @@ export function createStudioHandler({
               "Voice session belongs to a different workspace",
               401,
             );
-          // Reserve the entire allowance before contacting the provider. Ambiguous failures
-          // consume it too, so retries cannot mint extra credentials after a timeout.
+          // Hold the balance until provider records confirm actual call duration.
           const allowance = protectedDemo
             ? await reserveDemo(
                 request,
@@ -801,31 +814,52 @@ export function createStudioHandler({
                 grant.agent_id,
               )
             : { max_seconds: ACCOUNT_DEMO_SECONDS };
-          if (protectedDemo)
-            await provider(`/agents/${id(grant.agent_id)}`, {
-              method: "PATCH",
-              body: {
-                conversation_config: {
-                  conversation: { max_duration_seconds: allowance.max_seconds },
-                },
-                platform_settings: {
-                  auth: { enable_auth: true },
-                  call_limits: {
-                    agent_concurrency_limit: 1,
-                    daily_limit: 1,
-                    bursting_enabled: false,
+          try {
+            if (protectedDemo)
+              await provider(`/agents/${id(grant.agent_id)}`, {
+                method: "PATCH",
+                body: {
+                  conversation_config: {
+                    conversation: {
+                      max_duration_seconds: allowance.max_seconds,
+                    },
+                  },
+                  platform_settings: {
+                    auth: { enable_auth: true },
+                    call_limits: {
+                      agent_concurrency_limit: 1,
+                      daily_limit: 100,
+                      bursting_enabled: false,
+                    },
                   },
                 },
-              },
-            });
-          const result = await provider(
-            `/conversation/get-signed-url?agent_id=${id(grant.agent_id)}&include_conversation_id=true`,
-          );
+              });
+          } catch (error) {
+            if (allowance.reservation_id)
+              await releaseUnissuedDemo(allowance.reservation_id, env);
+            throw error;
+          }
+          let result;
+          try {
+            result = await provider(
+              `/conversation/get-signed-url?agent_id=${id(grant.agent_id)}&include_conversation_id=true`,
+            );
+          } catch (error) {
+            if (allowance.reservation_id)
+              await releaseUnissuedDemo(allowance.reservation_id, env);
+            throw error;
+          }
           if (
             typeof result.signed_url !== "string" ||
             !result.signed_url.startsWith("wss://")
           )
             throw new ApiError("Invalid voice session response", 502);
+          if (allowance.reservation_id && result.conversation_id)
+            await bindDemoConversation(
+              allowance.reservation_id,
+              id(result.conversation_id),
+              env,
+            );
           return respond({
             signed_url: result.signed_url,
             max_seconds: allowance.max_seconds,

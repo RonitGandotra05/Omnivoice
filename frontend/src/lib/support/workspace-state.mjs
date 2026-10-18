@@ -322,7 +322,9 @@ export function workspaceAction(
       publication: state.releases[0],
       result: {
         ...state.publish.result,
-        needs_publish: state.releases[0]?.revision !== workspaceRevision(state),
+        needs_publish:
+          !state.agentToken ||
+          state.releases[0]?.revision !== workspaceRevision(state),
       },
     };
   if (path === "voice/releases" && method === "GET")

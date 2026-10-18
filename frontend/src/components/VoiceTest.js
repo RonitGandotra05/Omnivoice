@@ -44,6 +44,8 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
       );
   useEffect(() => {
     refreshAllowance();
+    const timer = setInterval(refreshAllowance, 15000);
+    return () => clearInterval(timer);
   }, []);
   const [starting, setStarting] = useState(false);
   const [transcript, setTranscript] = useState([]);
@@ -147,6 +149,7 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
     setConversationId("");
     setCaller(null);
     setTrackingError("");
+    let reservationId;
     try {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error(
@@ -163,7 +166,15 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
         method: "POST",
         signal: attempt.controller.signal,
       });
-      if (!guard.current.current(attempt)) return;
+      reservationId = data.reservation_id;
+      if (!guard.current.current(attempt)) {
+        if (reservationId)
+          await studioRequest("voice/cancel", {
+            method: "POST",
+            body: { reservation_id: reservationId },
+          });
+        return;
+      }
       maxSeconds.current = data.max_seconds || ACCOUNT_DEMO_SECONDS;
       setRemaining(maxSeconds.current);
       setAllowance((previous) => ({ ...previous, available: false }));
@@ -179,6 +190,14 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
       });
       if (!guard.current.current(attempt)) await conversation.endSession();
     } catch (err) {
+      if (reservationId) {
+        try {
+          await studioRequest("voice/cancel", {
+            method: "POST",
+            body: { reservation_id: reservationId },
+          });
+        } catch {}
+      }
       refreshAllowance();
       if (guard.current.current(attempt))
         setError(
@@ -247,7 +266,9 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
         <span>
           {connected
             ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} remaining · Select the phone to end`
-            : "Microphone required · Up to 10 minutes daily"}
+            : allowance?.available
+              ? `${Math.floor(allowance.max_seconds / 60)}:${String(allowance.max_seconds % 60).padStart(2, "0")} left today · Microphone required`
+              : "Microphone required · Up to 10 minutes daily"}
         </span>
       </div>
       {(starting || conversation.status === "connecting") && (
@@ -284,9 +305,11 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
         conversation.status !== "connecting" && (
           <p role="status">
             {allowance.error ||
-              (allowance.retry_at
-                ? `Your next demo is available ${new Date(allowance.retry_at).toLocaleString()}.`
-                : "Your daily demo time has been reserved. Come back tomorrow.")}
+              (allowance.pending_seconds > 0
+                ? "Checking your last connection. Unused time returns after the voice provider confirms the call ended. This updates automatically."
+                : allowance.retry_at
+                  ? `Your next demo is available ${new Date(allowance.retry_at).toLocaleString()}.`
+                  : "Voice availability is being checked. Please try again shortly.")}
           </p>
         )}
       {!connected && !starting && (

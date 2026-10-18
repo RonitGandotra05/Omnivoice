@@ -9,6 +9,7 @@ import {
   workspaceRevision,
 } from "./workspace-state.mjs";
 import { parse, ProfileSchema, DocumentsSchema } from "./schema.mjs";
+import { prepareVoiceWorkspace } from "../prepare-voice.mjs";
 import { answer, evaluateChecks } from "./knowledge.mjs";
 let capabilities;
 const jobs = new Map();
@@ -245,6 +246,15 @@ export async function studioRequest(path, options = {}) {
       storage: "preview",
     });
   }
+  if (path === "voice/cancel") {
+    const result = await serverRequest(path, body);
+    if (result.cancelled)
+      await updateWorkspace((s) => {
+        s.agentToken = null;
+        s.publish = { status: "idle", result: { needs_publish: true } };
+      });
+    return result;
+  }
   if (path === "voice/session") {
     let state = await readWorkspace();
     if (!state.agentToken && mode === "postgres") {
@@ -269,11 +279,34 @@ export async function studioRequest(path, options = {}) {
       throw new Error(
         "Publish your workspace knowledge before starting voice.",
       );
-    return serverRequest(
-      path,
-      { agent_token: state.agentToken },
-      { signal: options.signal },
-    );
+    try {
+      return await serverRequest(
+        path,
+        { agent_token: state.agentToken },
+        { signal: options.signal },
+      );
+    } catch (error) {
+      await updateWorkspace((s) => {
+        s.agentToken = null;
+        s.publish = { status: "idle" };
+      });
+      if (error.status !== 502) throw error;
+      // An expired or revoked cached agent can be rebuilt within this click.
+      await prepareVoiceWorkspace({
+        request: studioRequest,
+        profile: state.profile,
+        documents: state.documents,
+        tickets: state.tickets,
+        mode,
+        signal: options.signal,
+      });
+      const repaired = await readWorkspace();
+      return serverRequest(
+        path,
+        { agent_token: repaired.agentToken },
+        { signal: options.signal },
+      );
+    }
   }
   if (path === "voice/publish" && method === "POST") {
     if (!capabilities?.voice_configured)
