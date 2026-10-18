@@ -1,7 +1,11 @@
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Contact" };
+export const metadata = {
+  title: "Contact",
+  description: "Discuss your business support workflow and OmniVoice setup.",
+  alternates: { canonical: "/contact" },
+};
 export default function Contact() {
   const configured = (process.env.CONTACT_EMAIL || "").trim();
   const email = /^[^\s@?&#]+@[^\s@?&#]+\.[^\s@?&#]+$/.test(configured)

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 import VoiceInstrument from "@/components/ui/VoiceInstrument";
+export const metadata = {
+  alternates: { canonical: "/" },
+};
 const steps = [
   [
     "01",

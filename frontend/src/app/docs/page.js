@@ -4,6 +4,7 @@ export const metadata = {
   title: "How it works",
   description:
     "A short guide to company knowledge, voice demos, and human handoffs in OmniVoice.",
+  alternates: { canonical: "/docs" },
 };
 export default function Guide() {
   return (

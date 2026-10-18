@@ -1,0 +1,22 @@
+# OmniVoice
+
+> OmniVoice is an AI voice agent studio for building company customer support agents grounded in business documents and workflows.
+
+The studio helps teams prepare company knowledge, configure support behavior, test voice conversations, and plan human handoffs. Local workspace data stays in the browser until the owner explicitly publishes approved knowledge to a voice provider.
+
+## Public pages
+
+- [Home](https://omnivoice-agent-studio.netlify.app/): Product overview and workflow.
+- [Pricing](https://omnivoice-agent-studio.netlify.app/pricing): Proposed plans and conversation cost estimator. Paid billing is not active.
+- [Documentation](https://omnivoice-agent-studio.netlify.app/docs): Product and setup documentation.
+- [Tutorial](https://omnivoice-agent-studio.netlify.app/tutorial): Getting started with the studio.
+- [Contact](https://omnivoice-agent-studio.netlify.app/contact): Contact and setup discussions.
+- [Try the studio](https://omnivoice-agent-studio.netlify.app/try-for-free): Open the company agent studio.
+
+## More information
+
+- [Source repository](https://github.com/RonitGandotra05/Omnivoice)
+- [Sitemap](https://omnivoice-agent-studio.netlify.app/sitemap.xml)
+- [Robots policy](https://omnivoice-agent-studio.netlify.app/robots.txt)
+
+Account, administrator, and API routes are operational interfaces, not public content.

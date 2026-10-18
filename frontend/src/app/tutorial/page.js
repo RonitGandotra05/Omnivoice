@@ -4,6 +4,7 @@ export const metadata = {
   title: "Your first agent",
   description:
     "Set up your company in one place, then talk to your support agent.",
+  alternates: { canonical: "/tutorial" },
 };
 export default function Tutorial() {
   return (

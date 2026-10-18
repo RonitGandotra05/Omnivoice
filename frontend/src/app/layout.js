@@ -3,12 +3,28 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { AccountPreferences } from "@/components/AccountPreferences";
 export const metadata = {
+  metadataBase: new URL("https://omnivoice-agent-studio.netlify.app"),
   title: {
-    default: "OmniVoice — Voice Agent Studio",
+    default: "OmniVoice — AI Voice Agent Studio for Customer Support",
     template: "%s · OmniVoice",
   },
   description:
     "Build company support agents with document knowledge, routed escalations, and natural voice conversations. Test locally, then connect your business.",
+  openGraph: {
+    type: "website",
+    siteName: "OmniVoice",
+    title: "OmniVoice — AI Voice Agent Studio for Customer Support",
+    description:
+      "Build company support agents grounded in your documents, with natural voice conversations and clear human handoffs.",
+    images: ["/voice-sculpture.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OmniVoice — AI Voice Agent Studio for Customer Support",
+    description:
+      "Build company support agents grounded in your documents, with natural voice conversations and clear human handoffs.",
+    images: ["/voice-sculpture.png"],
+  },
 };
 export default function RootLayout({ children }) {
   return (

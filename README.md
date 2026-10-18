@@ -8,6 +8,10 @@
 </p>
 
 <p align="center">
+  <a href="https://omnivoice-agent-studio.netlify.app/">Open the live OmniVoice studio</a>
+</p>
+
+<p align="center">
   <a href="#built-for-your-business">Explore the workspace</a> &nbsp; · &nbsp;
   <a href="#run-it-locally">Run locally</a> &nbsp; · &nbsp;
   <a href="docs/company-integration.md">Integration guide</a>
@@ -84,7 +88,7 @@ IndexedDB is local browser storage; clearing site data removes it. Export a back
 
 ## Deploy to Netlify
 
-Connect this repository using the root **[netlify.toml](netlify.toml)**. It builds `frontend/` and deploys Next.js routes with the framework adapter. Set `PUBLIC_APP_URL` to the real HTTPS origin and add secrets to the server environment. No Render service, Python function or port-8000 proxy is involved.
+Connect this repository using the root **[netlify.toml](netlify.toml)**. It builds `frontend/` and deploys Next.js routes with the framework adapter. The live site is **[https://omnivoice-agent-studio.netlify.app/](https://omnivoice-agent-studio.netlify.app/)**; set `PUBLIC_APP_URL` to this HTTPS origin in the Netlify environment and add secrets to the server environment. The app publishes `robots.txt`, `sitemap.xml` and `llms.txt`; submit the sitemap in Google Search Console and Bing Webmaster Tools to request discovery and indexing. No Render service, Python function or port-8000 proxy is involved.
 
 ```sh
 cd frontend
