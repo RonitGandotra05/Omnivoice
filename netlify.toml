@@ -6,6 +6,9 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [[headers]]
   for = "/vendor/*"
   [headers.values]
