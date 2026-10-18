@@ -16,14 +16,21 @@ export const metadata = {
     title: "OmniVoice — AI Voice Agent Studio for Customer Support",
     description:
       "Build company support agents grounded in your documents, with natural voice conversations and clear human handoffs.",
-    images: ["/voice-sculpture.png"],
+    images: [
+      {
+        url: "/omnivoice-homepage-light-v2.png",
+        width: 1200,
+        height: 630,
+        alt: "OmniVoice homepage — Your company. Every call. Understood.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "OmniVoice — AI Voice Agent Studio for Customer Support",
     description:
       "Build company support agents grounded in your documents, with natural voice conversations and clear human handoffs.",
-    images: ["/voice-sculpture.png"],
+    images: ["/omnivoice-homepage-light-v2.png"],
   },
 };
 export default function RootLayout({ children }) {

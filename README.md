@@ -88,6 +88,10 @@ IndexedDB is local browser storage; clearing site data removes it. Export a back
 
 ## Deploy to Netlify
 
+Continuous deployment is connected to `RonitGandotra05/Omnivoice`: each push to `main` automatically builds and publishes the production site through Netlify's GitHub webhook. Build settings remain in the root `netlify.toml`; no GitHub Actions deployment secrets or manual CLI deployment are required.
+
+Link previews use the light homepage capture in `frontend/public/omnivoice-homepage-light-v2.png`, declared in the root layout's Open Graph and Twitter metadata. When refreshing the capture, use a new filename and update both metadata references so image caches can fetch the replacement. Sites that cached a previously shared link may need the link removed and re-added or their preview refreshed.
+
 Connect this repository using the root **[netlify.toml](netlify.toml)**. It builds `frontend/` and deploys Next.js routes with the framework adapter. The live site is **[https://omnivoice-agent-studio.netlify.app/](https://omnivoice-agent-studio.netlify.app/)**; set `PUBLIC_APP_URL` to this HTTPS origin in the Netlify environment and add secrets to the server environment. The app publishes `robots.txt`, `sitemap.xml` and `llms.txt`; submit the sitemap in Google Search Console and Bing Webmaster Tools to request discovery and indexing. No Render service, Python function or port-8000 proxy is involved.
 
 ```sh
