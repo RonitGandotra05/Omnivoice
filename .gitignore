@@ -120,3 +120,8 @@ docs/audits/voice-handoff-2026-10-24/fallback-scope.json
 docs/audits/voice-handoff-2026-10-24/README.md
 docs/audits/voice-handoff-2026-10-24/refused-consent.json
 docs/audits/voice-handoff-2026-10-24/river-support-sample.mp3
+
+!frontend/tests/admin-dashboard*.mjs
+!frontend/tests/start-admin-dashboard-ui.mjs
+frontend/.env.example
+frontend/.env.example

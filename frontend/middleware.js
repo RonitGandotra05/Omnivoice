@@ -7,16 +7,8 @@ export async function middleware(request) {
       { error: "Cross-origin requests are not allowed." },
       { status: 403 },
     );
-  if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-    try {
-      await boundedBody(request.clone(), 64 * 1024);
-    } catch {
-      return NextResponse.json(
-        { error: "Request too large." },
-        { status: 413 },
-      );
-    }
-  }
+  // Do not read request bodies in middleware before forwarding: the Node admin
+  // handler owns bounded JSON parsing, preserving streamed bodies on hosting adapters.
   // Google-account administration is authorized in Node against the current
   // database identity. The page and each API handler enforce this independently.
   if (
@@ -27,6 +19,16 @@ export async function middleware(request) {
     )
   )
     return NextResponse.next();
+  if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+    try {
+      await boundedBody(request.clone(), 64 * 1024);
+    } catch {
+      return NextResponse.json(
+        { error: "Request too large." },
+        { status: 413 },
+      );
+    }
+  }
   // Middleware checks the signed claim using Web Crypto only. Every admin API
   // independently verifies current database role/revocation in its Node handler.
   const token = request.cookies.get("auth_token")?.value;

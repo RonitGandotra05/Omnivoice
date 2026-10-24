@@ -1,4 +1,10 @@
-import { changeVoiceAllowance, voiceUsageView } from "./voice-allowance.mjs";
+import {
+  readAdminAccount,
+  listAdminAccounts,
+  readAdminActivity,
+} from "./admin-accounts.mjs";
+import { providerUsage } from "./provider-usage.mjs";
+import { changeVoiceAllowance } from "./voice-allowance.mjs";
 import { setupDemoDatabase } from "./demo-protection.mjs";
 import { demoAccount } from "./demo-accounts.mjs";
 import { isProductAdmin } from "./admin-policy.mjs";
@@ -38,28 +44,37 @@ export async function handleProductAdmin(request, section, env = process.env) {
       "ALTER TABLE ov_admin_events ADD COLUMN IF NOT EXISTS details JSONB NOT NULL DEFAULT '{}'::jsonb",
     );
     if (request.method === "GET" && section === "overview") {
-      const [accounts, sessions, activity, security, operations, audit] =
-        await Promise.all([
-          pool.query(
-            "SELECT COUNT(*)::int AS total, COUNT(*) FILTER(WHERE active)::int AS active, COUNT(*) FILTER(WHERE email_verified)::int AS verified FROM ov_demo_accounts",
-          ),
-          pool.query(
-            "SELECT COUNT(*)::int AS total, COUNT(*) FILTER(WHERE created_at>NOW()-INTERVAL '24 hours')::int AS today, COUNT(*) FILTER(WHERE NOT settled AND expires_at>NOW())::int AS pending, COALESCE(SUM(duration_seconds) FILTER(WHERE settled),0)::bigint AS confirmed_seconds, COALESCE(SUM(duration_seconds) FILTER(WHERE NOT settled AND expires_at>NOW()),0)::bigint AS reserved_seconds FROM ov_demo_sessions",
-          ),
-          pool.query(
-            "SELECT d.day::date::text AS day,COUNT(s.id)::int AS sessions,COALESCE(SUM(s.duration_seconds) FILTER(WHERE s.settled),0)::int AS seconds FROM generate_series(((NOW() AT TIME ZONE 'UTC')::date-2)::timestamp,((NOW() AT TIME ZONE 'UTC')::date)::timestamp,INTERVAL '1 day') d(day) LEFT JOIN ov_demo_sessions s ON s.created_at>=d.day AT TIME ZONE 'UTC' AND s.created_at<(d.day+INTERVAL '1 day') AT TIME ZONE 'UTC' GROUP BY d.day ORDER BY d.day",
-          ),
-          pool.query(
-            "SELECT event,COUNT(*)::int AS count FROM ov_auth_events WHERE created_at>NOW()-INTERVAL '24 hours' GROUP BY event ORDER BY count DESC",
-          ),
-          pool.query(
-            "SELECT operation,SUM(count)::bigint AS count,SUM(characters)::bigint AS characters FROM ov_demo_operations WHERE day>=CURRENT_DATE-2 GROUP BY operation ORDER BY operation",
-          ),
-          pool.query(
-            "SELECT e.action,e.details,e.created_at,a.email AS target_email FROM ov_admin_events e LEFT JOIN ov_demo_accounts a ON a.id=e.target ORDER BY e.created_at DESC,e.id DESC LIMIT 30",
-          ),
-        ]);
+      const [
+        accounts,
+        sessions,
+        activity,
+        security,
+        operations,
+        audit,
+        provider,
+      ] = await Promise.all([
+        pool.query(
+          "SELECT COUNT(*)::int AS total, COUNT(*) FILTER(WHERE active)::int AS active, COUNT(*) FILTER(WHERE email_verified)::int AS verified FROM ov_demo_accounts",
+        ),
+        pool.query(
+          "SELECT COUNT(*)::int AS total, COUNT(*) FILTER(WHERE created_at>NOW()-INTERVAL '24 hours')::int AS today, COUNT(*) FILTER(WHERE NOT settled AND expires_at>NOW())::int AS pending, COALESCE(SUM(duration_seconds) FILTER(WHERE settled),0)::bigint AS confirmed_seconds, COALESCE(SUM(duration_seconds) FILTER(WHERE NOT settled AND expires_at>NOW()),0)::bigint AS reserved_seconds FROM ov_demo_sessions",
+        ),
+        pool.query(
+          "SELECT d.day::date::text AS day,COUNT(s.id)::int AS sessions,COALESCE(SUM(s.duration_seconds) FILTER(WHERE s.settled),0)::int AS seconds FROM generate_series(((NOW() AT TIME ZONE 'UTC')::date-6)::timestamp,((NOW() AT TIME ZONE 'UTC')::date)::timestamp,INTERVAL '1 day') d(day) LEFT JOIN ov_demo_sessions s ON s.created_at>=d.day AT TIME ZONE 'UTC' AND s.created_at<(d.day+INTERVAL '1 day') AT TIME ZONE 'UTC' GROUP BY d.day ORDER BY d.day",
+        ),
+        pool.query(
+          "SELECT event,COUNT(*)::int AS count FROM ov_auth_events WHERE created_at>NOW()-INTERVAL '24 hours' GROUP BY event ORDER BY count DESC",
+        ),
+        pool.query(
+          "SELECT operation,SUM(count)::bigint AS count,SUM(characters)::bigint AS characters FROM ov_demo_operations WHERE day>=CURRENT_DATE-2 GROUP BY operation ORDER BY operation",
+        ),
+        pool.query(
+          "SELECT e.action,e.details,e.created_at,a.email AS target_email FROM ov_admin_events e LEFT JOIN ov_demo_accounts a ON a.id=e.target ORDER BY e.created_at DESC,e.id DESC LIMIT 30",
+        ),
+        providerUsage(env),
+      ]);
       return reply({
+        provider_usage: provider,
         accounts: accounts.rows[0],
         sessions: sessions.rows[0],
         activity: activity.rows,
@@ -90,39 +105,37 @@ export async function handleProductAdmin(request, section, env = process.env) {
       const search = (url.searchParams.get("search") || "")
         .trim()
         .slice(0, 100);
-      const result = await pool.query(
-        `SELECT a.id,a.name,a.email,a.active,a.email_verified,a.is_admin,a.created_at,a.last_login_at,a.voice_budget_seconds,a.voice_reset_at,COALESCE(m.enabled,FALSE) AS mfa_enabled,
-        COALESCE(u.used_seconds,0)::int AS used_seconds,COALESCE(u.pending_seconds,0)::int AS pending_seconds,COALESCE(u.retained_seconds,0)::int AS retained_seconds
-        FROM ov_demo_accounts a LEFT JOIN ov_auth_mfa m ON m.principal='public:'||a.id::text
-        LEFT JOIN LATERAL(SELECT SUM(duration_seconds) FILTER(WHERE settled AND expires_at>NOW() AND created_at>=COALESCE(a.voice_reset_at,'-infinity'::timestamptz)) AS used_seconds,
-        SUM(duration_seconds) FILTER(WHERE NOT settled AND expires_at>NOW()) AS pending_seconds,
-        SUM(duration_seconds) FILTER(WHERE settled) AS retained_seconds FROM ov_demo_sessions WHERE account_id=a.id) u ON TRUE
-        WHERE $2='' OR strpos(lower(a.name),lower($2))>0 OR strpos(lower(a.email),lower($2))>0
-        ORDER BY a.created_at DESC,a.id LIMIT 26 OFFSET $1`,
-        [(page - 1) * 25, search],
+      if (url.searchParams.has("id"))
+        return reply(
+          await readAdminActivity(pool, url.searchParams.get("id"), page),
+        );
+      return reply(
+        await listAdminAccounts(pool, {
+          page,
+          search,
+          status: url.searchParams.get("status") || "all",
+          sort: url.searchParams.get("sort") || "newest",
+        }),
       );
-      return reply({
-        accounts: result.rows
-          .slice(0, 25)
-          .map((row) => ({ ...row, voice_usage: voiceUsageView(row, row) })),
-        has_more: result.rows.length > 25,
-        page,
-      });
     }
     if (request.method === "POST" && section === "accounts") {
       if (!request.headers.get("origin") || !sameOrigin(request, env))
         throw new ApiError("A same-origin request is required.", 403);
-      const body = JSON.parse(
-        new TextDecoder().decode(await boundedBody(request, 4096)),
-      );
+      const body = await readAdminJson(request);
       assertDatabaseManagedRoles(body);
       if (["set_minutes", "reset_minutes"].includes(body?.action)) {
         const db = await pool.connect();
         try {
           await db.query("BEGIN");
           const result = await changeVoiceAllowance(db, admin.id, body);
+          const updatedAccount = await readAdminAccount(db, body.id);
           await db.query("COMMIT");
-          return reply({ ok: true, ...result });
+          return reply({
+            ok: true,
+            ...result,
+            account: updatedAccount,
+            updated_at: new Date().toISOString(),
+          });
         } catch (error) {
           await db.query("ROLLBACK");
           throw error;
@@ -196,4 +209,32 @@ export async function handleProductAdmin(request, section, env = process.env) {
             : 503),
     );
   }
+}
+
+export async function readAdminJson(request) {
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .includes("application/json")
+  )
+    throw new ApiError("Send account updates as JSON.", 415);
+  const raw = await boundedBody(request, 4096, { timeoutMs: 8000 });
+  if (!raw?.byteLength)
+    throw new ApiError(
+      "The account update arrived without a body. Refresh the page and submit it again.",
+      400,
+    );
+  let body;
+  try {
+    body = JSON.parse(new TextDecoder().decode(raw));
+  } catch {
+    throw new ApiError(
+      "The account update is not valid JSON. Refresh the page and submit it again.",
+      400,
+    );
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body))
+    throw new ApiError("Choose a valid account action.", 422);
+  return body;
 }
