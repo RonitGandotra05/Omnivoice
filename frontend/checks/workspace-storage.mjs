@@ -15,6 +15,8 @@ test("IndexedDB reloads without a server or localStorage", async () => {
   await localAction("profile", "PUT", {
     ...initial.profile,
     company_name: "Browser Company",
+    greeting: "Hello from Browser Company.",
+    support_email: "hello@browser.example",
   });
   assert.equal((await readWorkspace()).profile.company_name, "Browser Company");
 });

@@ -925,6 +925,7 @@ export function createStudioHandler({
       if (path === "workspace" && method === "GET") {
         return respond({
           profile: result.profile,
+          sample_content_removed: !!result.sample_content_removed,
           documents: result.documents.map(({ content: _content, ...doc }) => ({
             ...doc,
             content: "",

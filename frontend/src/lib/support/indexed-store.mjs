@@ -1,3 +1,4 @@
+import { removeCompanySamples } from "./company-draft.mjs";
 import {
   freshWorkspace,
   migrateDraft,
@@ -53,7 +54,10 @@ export async function transactWorkspace(operation, mode = "readwrite") {
           } catch {}
           state = old ? migrateDraft(old) : freshWorkspace();
         }
+        const cleaned = removeCompanySamples(state);
         result = operation(state);
+        if (cleaned && result?.profile && Array.isArray(result?.documents))
+          result.sample_content_removed = true;
         if (result?.then)
           throw new Error("IndexedDB operations must be synchronous");
         if (mode === "readwrite") {

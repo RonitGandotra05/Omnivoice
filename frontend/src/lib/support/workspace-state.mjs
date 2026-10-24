@@ -1,3 +1,4 @@
+import { emptyCompanyProfile } from "./company-draft.mjs";
 import {
   initialProfile,
   initialDocuments,
@@ -15,10 +16,10 @@ import {
 } from "./schema.mjs";
 import { answer, evaluateChecks, routeTicket } from "./knowledge.mjs";
 import { availability } from "./hours.mjs";
-export const freshWorkspace = () => ({
+export const freshWorkspace = ({ sample = false } = {}) => ({
   version: 2,
-  profile: structuredClone(initialProfile),
-  documents: structuredClone(initialDocuments).map((d) => ({
+  profile: sample ? structuredClone(initialProfile) : emptyCompanyProfile(),
+  documents: structuredClone(sample ? initialDocuments : []).map((d) => ({
     ...d,
     status: "ready",
     metadata: {},
@@ -34,6 +35,7 @@ export const freshWorkspace = () => ({
   agentToken: null,
   revision: 0,
 });
+export const sampleWorkspace = () => freshWorkspace({ sample: true });
 export function migrateDraft(draft) {
   const state = freshWorkspace();
   if (validDraft(draft)) {
@@ -87,7 +89,12 @@ export function captureCaller(
 ) {
   const body = parse(CallerSchema, values);
   const current = availability(state.profile, at);
-  if (body.action === "availability" && !body.human_requested && !body.callback_requested) return { availability: current };
+  if (
+    body.action === "availability" &&
+    !body.human_requested &&
+    !body.callback_requested
+  )
+    return { availability: current };
   const previous = state.callers.find(
     (c) => c.conversation_id === body.conversation_id,
   );

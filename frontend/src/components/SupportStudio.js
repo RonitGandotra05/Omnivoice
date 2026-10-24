@@ -1,4 +1,8 @@
 "use client";
+import {
+  emptyCompanyProfile,
+  companyGreeting,
+} from "@/lib/support/company-draft.mjs";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { studioRequest } from "@/lib/support/studio-client.mjs";
@@ -17,8 +21,6 @@ const VoiceTest = dynamic(() => import("@/components/VoiceTest"), {
 import { UPLOAD_LIMITS, uploadBatch } from "@/lib/upload-batch.mjs";
 import Icon from "@/components/ui/Icon";
 import {
-  initialProfile,
-  initialDocuments,
   voicePrompt,
   profileError,
   workspaceReadiness,
@@ -48,8 +50,8 @@ export default function SupportStudio() {
     if (new URLSearchParams(window.location.search).get("view") === "voice")
       setSection("test");
   }, []);
-  const [profile, setProfile] = useState(initialProfile);
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [profile, setProfile] = useState(emptyCompanyProfile);
+  const [documents, setDocuments] = useState([]);
   const [textTitle, setTextTitle] = useState("");
   const [textKnowledge, setTextKnowledge] = useState("");
   const [tickets, setTickets] = useState([]);
@@ -110,7 +112,11 @@ export default function SupportStudio() {
       setCalls(data.conversations || []);
       setCallers(data.callers || []);
       setConnected(true);
-      setDirty(false);
+      setDirty(!!data.sample_content_removed);
+      if (data.sample_content_removed)
+        setNotice(
+          "Removed untouched example-company content. Review your company details and hours, then save. Only add policies that apply to your business.",
+        );
       setLoadState("ready");
     })().catch((error) => {
       if (active) {
@@ -178,7 +184,14 @@ export default function SupportStudio() {
     }
   };
   const update = (field, value) => {
-    setProfile((p) => ({ ...p, [field]: value }));
+    setProfile((p) => ({
+      ...p,
+      [field]: value,
+      ...(field === "company_name" &&
+      (!p.greeting || p.greeting === companyGreeting(p.company_name))
+        ? { greeting: value.trim() ? companyGreeting(value.trim()) : "" }
+        : {}),
+    }));
     setDirty(true);
     setNotice("");
     setMessages([]);
@@ -507,10 +520,10 @@ export default function SupportStudio() {
         <aside className="workspace-sidebar">
           <div className="company-stamp">
             <span className="company-monogram">
-              {profile.company_name.slice(0, 1)}
+              {profile.company_name.slice(0, 1) || "—"}
             </span>
             <div>
-              <strong>{profile.company_name}</strong>
+              <strong>{profile.company_name || "Your company"}</strong>
               <small>
                 {connected
                   ? status?.storage === "postgres"
@@ -1119,7 +1132,7 @@ export default function SupportStudio() {
                   />
                   <div className="test-agent-bar">
                     <span className="status-dot" />
-                    <strong>{profile.company_name}</strong>
+                    <strong>{profile.company_name || "Your company"}</strong>
                     <span>
                       {
                         documents.filter((doc) => doc.status !== "needs_review")
@@ -1486,8 +1499,14 @@ export default function SupportStudio() {
       <CompanyAssistant
         profile={profile}
         disabled={!!busy}
-        onApply={(next) => {
+        companyInformation={textKnowledge}
+        onApply={(next, knowledge) => {
           setProfile(next);
+          if (knowledge !== undefined) {
+            setTextKnowledge(knowledge);
+            if (!textTitle.trim())
+              setTextTitle(`${next.company_name || "Company"} information`);
+          }
           setDirty(true);
           setNotice("Review your company details, then save your changes.");
           setMessages([]);

@@ -3,7 +3,10 @@ import fs from "node:fs";
 import dotenv from "dotenv";
 import assert from "node:assert/strict";
 import { generateProposal } from "../src/lib/server/company-assistant.mjs";
-import { validateExtraction } from "../src/lib/support/assistant-schema.mjs";
+import {
+  validateExtraction,
+  completeCompanyProposal,
+} from "../src/lib/support/assistant-schema.mjs";
 const env = { ...process.env, ...dotenv.parse(fs.readFileSync(".env.local")) };
 const profile = {
   company_name: "Northstar Dental",
@@ -15,6 +18,41 @@ const profile = {
 };
 const cases = [
   {
+    name: "Multiple company form sections",
+    message:
+      "Northstar Fabrication makes industrial parts and supplies bearings. Support email: help@northstar.example. Human support phone: +919876543210. Timezone: Asia/Kolkata. Human hours: Monday to Friday 09:00 to 17:00. Holiday: 2026-12-25. Sales team email: sales@northstar.example, keywords: bearings, parts. Our team speaks warmly and concisely.",
+    check: (u) => {
+      assert.equal(u.company_name, "Northstar Fabrication");
+      assert.equal(u.support_email, "help@northstar.example");
+      assert.equal(u.human_phone, "+919876543210");
+      assert.equal(u.timezone, "Asia/Kolkata");
+      assert.equal(u.office_hours.length, 5);
+      assert.equal(u.hours_enabled, true);
+      assert.ok(u.routes.some((r) => r.email === "sales@northstar.example"));
+      assert.deepEqual(u.holidays, ["2026-12-25"]);
+      assert.ok(u.company_information?.includes("industrial parts"));
+      assert.match(u.greeting, /Northstar Fabrication/);
+    },
+  },
+  {
+    name: "Sparse Amico contact details invent no policies or hours",
+    message:
+      "Company name: Amico Enterprises. Support email: info@amicoenterprises.in.",
+    check: (u) => {
+      assert.equal(u.company_name, "Amico Enterprises");
+      assert.match(u.greeting, /Amico Enterprises/);
+      assert.equal(u.support_email, "info@amicoenterprises.in");
+      assert.equal(u.office_hours, undefined);
+      assert.equal(u.routes, undefined);
+      assert.equal(u.holidays, undefined);
+      assert.ok(
+        !u.company_information ||
+          !/refund|shipping|30 days|Acme/.test(u.company_information),
+      );
+    },
+  },
+
+  {
     name: "About Us extraction",
     message:
       "Our company is Northstar Dental. We provide dental checkups in Delhi. Contact support@northstardental.example or +919876543210. We are open Monday to Friday from 9 AM to 6 PM.",
@@ -22,6 +60,8 @@ const cases = [
       assert.equal(u.company_name, "Northstar Dental");
       assert.equal(u.support_email, "support@northstardental.example");
       assert.equal(u.office_hours.length, 5);
+      assert.ok(u.company_information?.includes("Northstar Dental"));
+      assert.match(u.greeting, /Northstar Dental/);
     },
   },
   {
@@ -86,10 +126,14 @@ for (const item of cases) {
       },
       env,
     );
-    const updates = validateExtraction(
-      JSON.parse(result.text),
-      item.message,
+    const updates = completeCompanyProposal(
+      validateExtraction(
+        JSON.parse(result.text),
+        item.message,
+        item.profile || {},
+      ),
       item.profile || {},
+      item.message,
     );
     item.check(updates);
     total += result.usageMetadata?.totalTokenCount || 0;

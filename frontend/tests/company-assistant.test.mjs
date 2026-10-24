@@ -68,7 +68,8 @@ test("proposal reuses fields, never invents defaults or writes a company", async
   const response = await handle(request());
   const data = await response.json();
   assert.equal(response.status, 200);
-  assert.deepEqual(data.updates, { company_name: "Northstar Dental" });
+  assert.equal(data.updates.company_name, "Northstar Dental");
+  assert.match(data.updates.greeting, /Northstar Dental/);
   assert.equal(calls.generate.length, 1);
   assert.equal(calls.finish[0][1], "success");
   assert.match(response.headers.get("cache-control"), /no-store/);
@@ -354,8 +355,12 @@ test("reviewed AI changes persist through existing IndexedDB profile save", asyn
   const next = mergeProposal(
     before.profile,
     before.profile,
-    { company_name: "Reviewed company" },
-    ["company_name"],
+    {
+      company_name: "Reviewed company",
+      greeting: "Hello from Reviewed company.",
+      support_email: "hello@reviewed.example",
+    },
+    ["company_name", "greeting", "support_email"],
   );
   assert.equal(
     (await readWorkspace()).profile.company_name,
@@ -429,4 +434,212 @@ test("valid updates can repair an unfinished form without overwriting unrelated 
     ),
     false,
   );
+});
+
+test("fresh workspaces contain no invented company facts, routes, schedule or policies", async () => {
+  const { freshWorkspace } =
+    await import("../src/lib/support/workspace-state.mjs");
+  const state = freshWorkspace();
+  assert.equal(state.profile.company_name, "");
+  assert.equal(state.profile.greeting, "");
+  assert.equal(state.profile.support_email, "");
+  assert.deepEqual(state.documents, []);
+  assert.deepEqual(state.profile.routes, []);
+  assert.deepEqual(state.profile.office_hours, []);
+  assert.equal(state.profile.hours_enabled, false);
+});
+test("existing Amico draft loses only untouched shipped samples and gets its own greeting", async () => {
+  const { sampleWorkspace } =
+    await import("../src/lib/support/workspace-state.mjs");
+  const { removeCompanySamples } =
+    await import("../src/lib/support/company-draft.mjs");
+  const state = sampleWorkspace();
+  state.profile.company_name = "Amico Enterprises";
+  state.profile.support_email = "info@amicoenterprises.in";
+  state.profile.instructions = "Amico provides industrial components.";
+  state.agentToken = "old-agent";
+  state.documents.push({
+    id: "user-policy",
+    name: "Amico policy",
+    content: "Confirm all delivery dates with our team.",
+  });
+  assert.equal(removeCompanySamples(state), true);
+  assert.match(state.profile.greeting, /Amico Enterprises/);
+  assert.ok(!state.profile.greeting.includes("Acme"));
+  assert.deepEqual(state.profile.office_hours, []);
+  assert.deepEqual(state.profile.routes, []);
+  assert.equal(state.documents.length, 1);
+  assert.equal(state.documents[0].id, "user-policy");
+  assert.match(state.profile.instructions, /industrial/);
+  assert.equal(state.agentToken, null);
+  assert.equal(removeCompanySamples(state), false);
+});
+test("customized legacy documents, manual greetings, contacts and hours survive cleanup", async () => {
+  const { sampleWorkspace } =
+    await import("../src/lib/support/workspace-state.mjs");
+  const { removeCompanySamples } =
+    await import("../src/lib/support/company-draft.mjs");
+  const state = sampleWorkspace();
+  state.profile.company_name = "Amico Enterprises";
+  state.profile.greeting = "Welcome to Amico. How can we assist?";
+  state.profile.office_hours = [{ day: 5, opens: "10:00", closes: "16:00" }];
+  state.profile.routes = [
+    { name: "Sales", email: "sales@amico.example", keywords: ["parts"] },
+  ];
+  state.documents[0].content =
+    "Amico policy: Delivery dates require team confirmation.";
+  removeCompanySamples(state);
+  assert.equal(state.profile.greeting, "Welcome to Amico. How can we assist?");
+  assert.equal(state.documents.length, 1);
+  assert.match(state.documents[0].content, /Amico policy/);
+  assert.equal(state.profile.office_hours[0].closes, "16:00");
+  assert.equal(state.profile.routes[0].name, "Sales");
+});
+test("one review populates company, email, context, greeting, knowledge and schedule without inventing policies", async () => {
+  const { completeCompanyProposal, mergeCompanyInformation } =
+    await import("../src/lib/support/assistant-schema.mjs");
+  const { emptyCompanyProfile } =
+    await import("../src/lib/support/company-draft.mjs");
+  const message =
+    "Amico Enterprises supplies industrial components. Email info@amicoenterprises.in. We open Monday to Friday 9 AM to 5 PM.";
+  const updates = completeCompanyProposal(
+    validateExtraction(
+      {
+        in_scope: true,
+        updates: {
+          company_name: "Amico Enterprises",
+          support_email: "info@amicoenterprises.in",
+          instructions: "Industrial components",
+          hours_enabled: true,
+          office_hours: [{ day: "Monday", opens: "09:00", closes: "17:00" }],
+        },
+        evidence: {
+          company_name: "Amico Enterprises",
+          support_email: "info@amicoenterprises.in",
+          instructions: "Amico Enterprises supplies industrial components.",
+          hours_enabled: "Monday to Friday 9 AM to 5 PM",
+          office_hours: "Monday to Friday 9 AM to 5 PM",
+        },
+      },
+      message,
+      {},
+    ),
+    {},
+    message,
+  );
+  const initial = emptyCompanyProfile(),
+    selected = Object.keys(updates),
+    profile = mergeProposal(initial, initial, updates, selected),
+    knowledge = mergeCompanyInformation("", "", updates, selected);
+  assert.equal(profile.company_name, "Amico Enterprises");
+  assert.match(profile.greeting, /Amico Enterprises/);
+  assert.match(profile.instructions, /industrial components/);
+  assert.equal(profile.support_email, "info@amicoenterprises.in");
+  assert.equal(profile.office_hours[0].closes, "17:00");
+  assert.equal(knowledge, message);
+  assert.equal(profile.company_information, undefined);
+  assert.ok(!knowledge.includes("refund"));
+  assert.throws(
+    () => mergeCompanyInformation("Manual policy", "", updates, selected),
+    /changed/,
+  );
+  assert.equal(
+    mergeCompanyInformation("Manual policy", "Manual policy", updates, []),
+    undefined,
+  );
+});
+test("knowledge operations require source evidence and unrelated requests cannot generate a greeting", async () => {
+  const { completeCompanyProposal } =
+    await import("../src/lib/support/assistant-schema.mjs");
+  assert.deepEqual(
+    completeCompanyProposal(
+      {},
+      { company_name: "Amico Enterprises", greeting: "" },
+    ),
+    {},
+  );
+  assert.throws(() =>
+    validateExtraction(
+      {
+        in_scope: true,
+        updates: { company_information: true },
+        evidence: { company_information: "Invented refund policy" },
+      },
+      "We make industrial parts.",
+    ),
+  );
+});
+
+test("business context can join complete source sentences without inventing prose", () => {
+  const message =
+    "Northstar makes industrial parts. Email help@northstar.example. Our team speaks warmly.";
+  const context = "Northstar makes industrial parts. Our team speaks warmly.";
+  assert.equal(
+    validateExtraction(
+      {
+        in_scope: true,
+        updates: { instructions: context },
+        evidence: { instructions: context },
+      },
+      message,
+    ).instructions,
+    context,
+  );
+  assert.throws(() =>
+    validateExtraction(
+      {
+        in_scope: true,
+        updates: { instructions: "Northstar offers free refunds." },
+        evidence: { instructions: "Northstar offers free refunds." },
+      },
+      message,
+    ),
+  );
+});
+
+test("reviewed company knowledge saves with the existing document API and survives reload", async () => {
+  const { localAction, readWorkspace } =
+    await import("../src/lib/support/indexed-store.mjs");
+  const { saveTextKnowledge } = await import("../src/lib/text-knowledge.mjs");
+  const { completeCompanyProposal, mergeCompanyInformation } =
+    await import("../src/lib/support/assistant-schema.mjs");
+  const before = await readWorkspace();
+  const source =
+    "Amico Enterprises supplies industrial components. Contact info@amicoenterprises.in. Delivery dates require confirmation by our team.";
+  const updates = completeCompanyProposal(
+    {
+      company_name: "Amico Enterprises",
+      support_email: "info@amicoenterprises.in",
+      instructions: "Amico Enterprises supplies industrial components.",
+    },
+    before.profile,
+    source,
+  );
+  const selected = Object.keys(updates),
+    profile = mergeProposal(before.profile, before.profile, updates, selected);
+  const knowledge = mergeCompanyInformation("", "", updates, selected);
+  const docs = await saveTextKnowledge({
+    request: async (path, options) =>
+      localAction(path, options.method, JSON.parse(options.body)),
+    documents: before.documents,
+    title: "Amico Enterprises information",
+    content: knowledge,
+  });
+  await localAction("profile", "PUT", profile);
+  const reloaded = await readWorkspace();
+  assert.equal(reloaded.profile.company_name, "Amico Enterprises");
+  assert.match(reloaded.profile.greeting, /Amico Enterprises/);
+  assert.equal(reloaded.profile.support_email, "info@amicoenterprises.in");
+  assert.ok(reloaded.documents.some((doc) => doc.content === source));
+  assert.equal(docs.length, reloaded.documents.length);
+  assert.ok(!JSON.stringify(reloaded.documents).includes("Acme Commerce"));
+  const again = await saveTextKnowledge({
+    request: async () => {
+      throw new Error("Duplicate must not write");
+    },
+    documents: reloaded.documents,
+    title: "Amico Enterprises information",
+    content: knowledge,
+  });
+  assert.equal(again.length, reloaded.documents.length);
 });

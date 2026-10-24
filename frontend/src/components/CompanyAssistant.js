@@ -1,10 +1,19 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { fieldLabels, mergeProposal } from "@/lib/support/assistant-schema.mjs";
+import {
+  fieldLabels,
+  mergeProposal,
+  mergeCompanyInformation,
+} from "@/lib/support/assistant-schema.mjs";
 
 const display = (value) =>
   typeof value === "string" ? value || "Empty" : JSON.stringify(value, null, 2);
-export default function CompanyAssistant({ profile, onApply, disabled }) {
+export default function CompanyAssistant({
+  profile,
+  companyInformation = "",
+  onApply,
+  disabled,
+}) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [history, setHistory] = useState([]);
@@ -17,6 +26,8 @@ export default function CompanyAssistant({ profile, onApply, disabled }) {
   const [waiting, setWaiting] = useState(false);
   const pending = useRef(false);
   const controller = useRef(null);
+  const currentKnowledge = useRef(companyInformation);
+  currentKnowledge.current = companyInformation;
   const currentProfile = useRef(profile);
   currentProfile.current = profile;
   useEffect(() => () => controller.current?.abort(), []);
@@ -39,7 +50,8 @@ export default function CompanyAssistant({ profile, onApply, disabled }) {
     setBusy(true);
     setError("");
     const message = input.trim(),
-      snapshot = structuredClone(currentProfile.current);
+      snapshot = structuredClone(currentProfile.current),
+      knowledgeSnapshot = currentKnowledge.current;
     controller.current = new AbortController();
     try {
       const response = await fetch("/api/company-assistant", {
@@ -79,13 +91,22 @@ export default function CompanyAssistant({ profile, onApply, disabled }) {
       setInput("");
       setFocus(data.focus);
       const fields = Object.keys(data.updates);
-      setProposal(fields.length ? { snapshot, updates: data.updates } : null);
+      setProposal(
+        fields.length
+          ? { snapshot, knowledgeSnapshot, updates: data.updates }
+          : null,
+      );
       // Replacing existing values always requires explicit per-field selection.
       setSelected(
         fields.filter(
           (k) =>
-            snapshot[k] === "" ||
-            snapshot[k] === undefined ||
+            (k === "company_information"
+              ? knowledgeSnapshot === ""
+              : snapshot[k] === "") ||
+            (k !== "company_information" && snapshot[k] === undefined) ||
+            (k === "hours_enabled" &&
+              !snapshot.hours_enabled &&
+              !snapshot.office_hours?.length) ||
             (Array.isArray(snapshot[k]) && !snapshot[k].length),
         ),
       );
@@ -108,7 +129,13 @@ export default function CompanyAssistant({ profile, onApply, disabled }) {
         proposal.updates,
         selected,
       );
-      onApply(next);
+      const knowledge = mergeCompanyInformation(
+        currentKnowledge.current,
+        proposal.knowledgeSnapshot,
+        proposal.updates,
+        selected,
+      );
+      onApply(next, knowledge);
       setProposal(null);
       setError("");
       setHistory((items) =>
@@ -186,11 +213,25 @@ export default function CompanyAssistant({ profile, onApply, disabled }) {
                     <label htmlFor={`assistant-field-${field}`}>
                       Use {fieldLabels[field]}
                     </label>
-                    <small>Current: {display(profile[field])}</small>
+                    <small>
+                      Current:{" "}
+                      {display(
+                        field === "company_information"
+                          ? companyInformation
+                          : profile[field],
+                      )}
+                    </small>
                     <pre>{display(value)}</pre>
                   </span>
                 </div>
               ))}
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => setSelected(Object.keys(proposal.updates))}
+              >
+                Select all proposed changes
+              </button>
               <div className="assistant-actions">
                 <button
                   type="button"

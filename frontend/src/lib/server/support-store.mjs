@@ -1,3 +1,4 @@
+import { removeCompanySamples } from "../support/company-draft.mjs";
 import {
   createCipheriv,
   createDecipheriv,
@@ -110,7 +111,10 @@ export async function transactServer(tenant, operation, env = process.env) {
       [tenant],
     );
     const state = decryptState(row.rows[0].payload, tenant, env);
+    const cleaned = removeCompanySamples(state);
     const result = operation(state);
+    if (cleaned && result?.profile && Array.isArray(result?.documents))
+      result.sample_content_removed = true;
     if (result?.then)
       throw new Error(
         "Transactions must contain synchronous domain operations",

@@ -137,7 +137,7 @@ try {
   const reservation = await reserveAssistant(input(), env);
   await finishAssistant(reservation, "error", undefined, env);
   let row = (await pool.query("SELECT * FROM ov_company_ai_requests")).rows[0];
-  assert.equal(row.reserved_tokens, 36000);
+  assert.equal(row.reserved_tokens, 40000);
   assert.equal(row.finished, false);
   await finishAssistant(reservation, "error", {}, env);
   assert.equal(
@@ -193,8 +193,12 @@ try {
   const nextProfile = mergeProposal(
     before.profile,
     before.profile,
-    { company_name: "Reviewed company" },
-    ["company_name"],
+    {
+      company_name: "Reviewed company",
+      greeting: "Hello from Reviewed company.",
+      support_email: "hello@reviewed.example",
+    },
+    ["company_name", "greeting", "support_email"],
   );
   await serverAction(tenant, "profile", "PUT", nextProfile, storageEnv);
   const saved = await serverAction(tenant, "workspace", "GET", {}, storageEnv);

@@ -50,10 +50,10 @@ export async function reserveAssistant(
 ) {
   await setupAssistantBudget(env);
   const db = await databasePool(env).connect();
-  const tokens = 36000; // Conservative bound: <=32 KiB request + trusted prompt/schema + <=1536 output tokens.
+  const tokens = 40000; // Conservative bound: <=32 KiB request + trusted prompt/schema + <=3072 output tokens.
   const usd =
     (tokens * positive(env, "COMPANY_AI_INPUT_USD_PER_MILLION", 0.3)) / 1e6 +
-    (1536 * positive(env, "COMPANY_AI_OUTPUT_USD_PER_MILLION", 2.5)) / 1e6;
+    (3072 * positive(env, "COMPANY_AI_OUTPUT_USD_PER_MILLION", 2.5)) / 1e6;
   const id = randomUUID();
   try {
     await db.query("BEGIN");
