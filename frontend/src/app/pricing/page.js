@@ -4,6 +4,20 @@ import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 const linkedIn = "https://www.linkedin.com/in/ronitgandotra";
 const browserRate = 0.25;
+// Published business price uses the conservative cost model and 2.5x markup.
+const businessPricing = {
+  perMinute: 0.325,
+  monthlyPhoneAllowance: 62.5,
+};
+const usd = (value) =>
+  value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+const businessMinMinutes = 60;
+const businessMaxMinutes = 30000;
 const plans = [
   {
     name: "Explore",
@@ -51,6 +65,14 @@ const plans = [
 ];
 export default function Pricing() {
   const [minutes, setMinutes] = useState(500);
+  const [businessMinutes, setBusinessMinutes] = useState(25 * 60);
+  const businessPrice =
+    businessPricing.monthlyPhoneAllowance +
+    businessMinutes * businessPricing.perMinute;
+  const businessProgress =
+    ((businessMinutes - businessMinMinutes) /
+      (businessMaxMinutes - businessMinMinutes)) *
+    100;
   return (
     <div className="page-shell pricing">
       <div className="page-kicker">
@@ -135,18 +157,43 @@ export default function Pricing() {
           </a>
         </div>
         <div className="pricing-business-budget">
-          <span className="eyebrow">EXAMPLE MONTHLY BUDGET</span>
-          <strong>
-            $2,125–$2,500 <small>/ month</small>
+          <span className="eyebrow">PLAN YOUR MONTHLY CALLS</span>
+          <label
+            className="field pricing-business-slider"
+            htmlFor="business-minutes"
+          >
+            Monthly company call minutes
+            <output htmlFor="business-minutes">
+              {(businessMinutes / 60).toLocaleString("en-US")} hours ·{" "}
+              {businessMinutes.toLocaleString("en-US")} minutes
+            </output>
+            <input
+              id="business-minutes"
+              type="range"
+              min={businessMinMinutes}
+              max={businessMaxMinutes}
+              step="60"
+              value={businessMinutes}
+              aria-valuetext={`${businessMinutes / 60} hours, ${businessMinutes} shared minutes per month`}
+              onChange={(event) =>
+                setBusinessMinutes(Number(event.target.value))
+              }
+              style={{ "--business-progress": `${businessProgress}%` }}
+            />
+            <span className="pricing-slider-bounds">
+              <span>1 hour</span>
+              <span>500 hours</span>
+            </span>
+          </label>
+          <strong aria-live="polite" aria-atomic="true">
+            {usd(businessPrice)} <small>/ month</small>
           </strong>
-          <p>7,500 shared call minutes · 125 hours</p>
-          <p>Equivalent to 5 total call hours a day for 25 days a month.</p>
+          <p>Monthly plan price · minutes shared across your company.</p>
           <small>
-            Indicative Indian phone setup budget. Final pricing depends on the
-            carrier, model, simultaneous calls and implementation scope. Subject
-            to provider availability and business verification. Taxes and
-            one-time setup are additional; included services are confirmed in
-            your quote.
+            Standard business configuration. Taxes, one-time setup, additional
+            numbers and custom integrations are charged separately. Phone
+            availability, business verification and simultaneous call capacity
+            are confirmed before activation.
           </small>
         </div>
       </section>
@@ -174,8 +221,7 @@ export default function Pricing() {
         </div>
         <div className="calculator panel">
           <label className="field" htmlFor="minutes">
-            Browser testing minutes{" "}
-            <strong>{minutes.toLocaleString()}</strong>
+            Browser testing minutes <strong>{minutes.toLocaleString()}</strong>
             <input
               id="minutes"
               type="range"
@@ -218,7 +264,7 @@ export default function Pricing() {
           ],
           [
             "Are business minutes shared across the team?",
-            "Yes. The example 7,500 minutes is a monthly company pool shared across users and agents. It is not 7,500 minutes for each employee. Simultaneous call capacity is agreed separately.",
+            "Yes. The minutes selected in the business calculator form one monthly company pool shared across users and agents. They are not a separate allowance for each employee. Simultaneous call capacity is agreed separately.",
           ],
           [
             "Does the app replace my phone carrier?",
