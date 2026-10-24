@@ -7,46 +7,46 @@ export default function Footer() {
           omni<span>voice</span>
           <small>Good conversations. Thoughtfully built.</small>
         </Link>
+        <div className="footer-bottom">
+          <span>
+            © {new Date().getFullYear()} Ronit Gandotra. All rights reserved.
+          </span>
+          <div className="creator-credit">
+            <span>
+              Made by{" "}
+              <a
+                className="creator-name"
+                href="https://github.com/RonitGandotra05"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ronit Gandotra
+              </a>
+            </span>
+            <nav className="creator-socials" aria-label="Creator profiles">
+              <a
+                href="https://github.com/RonitGandotra05"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub <span aria-hidden="true">↗</span>
+              </a>
+              <a
+                href="https://www.linkedin.com/in/ronitgandotra"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                LinkedIn <span aria-hidden="true">↗</span>
+              </a>
+            </nav>
+          </div>
+        </div>
         <div className="footer-links">
           <Link href="/try-for-free">Agent studio</Link>
           <Link href="/docs">How it works</Link>
           <Link href="/tutorial">Tutorial</Link>
           <Link href="/pricing">Pricing</Link>
           <Link href="/contact">Contact</Link>
-        </div>
-      </div>
-      <div className="footer-bottom">
-        <span>
-          © {new Date().getFullYear()} Ronit Gandotra. All rights reserved.
-        </span>
-        <div className="creator-credit">
-          <span>
-            Made by{" "}
-            <a
-              className="creator-name"
-              href="https://github.com/RonitGandotra05"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ronit Gandotra
-            </a>
-          </span>
-          <nav className="creator-socials" aria-label="Creator profiles">
-            <a
-              href="https://github.com/RonitGandotra05"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub <span aria-hidden="true">↗</span>
-            </a>
-            <a
-              href="https://www.linkedin.com/in/ronitgandotra"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              LinkedIn <span aria-hidden="true">↗</span>
-            </a>
-          </nav>
         </div>
       </div>
     </footer>

@@ -503,11 +503,12 @@ h2 em {
   padding: 0 48px;
 }
 .footer-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
   border-top: 1px solid var(--line);
-  padding: 38px 0;
+  padding: 28px 0;
 }
 .footer-brand {
   font-size: 25px;
@@ -526,6 +527,7 @@ h2 em {
   margin-top: 10px;
 }
 .footer-links {
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 25px;
@@ -535,18 +537,16 @@ h2 em {
   color: var(--copper);
 }
 .footer-bottom {
-  border-top: 1px solid var(--line);
-  padding: 24px 0 100px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
-  gap: 20px;
+  gap: 4px;
   font-size: 11px;
   line-height: 1.7;
   color: var(--muted);
   align-items: center;
-  flex-wrap: wrap;
 }
 .creator-credit {
   display: flex;
@@ -1240,6 +1240,17 @@ pre {
   border: 1px solid var(--line);
 }
 @media (max-width: 1050px) {
+  .footer-top {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .footer-bottom {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .footer-links {
+    grid-column: 2;
+    grid-row: 1;
+  }
   .page-shell,
   .nav-shell,
   .site-footer {
@@ -1398,16 +1409,27 @@ pre {
     margin-top: 25px;
   }
   .footer-top {
-    flex-direction: column;
-    gap: 25px;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+    gap: 20px;
+    padding-block: 24px;
+  }
+  .footer-top .footer-links,
+  .footer-top .footer-bottom {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: center;
+  }
+  .footer-top .footer-links {
+    justify-content: center;
   }
   .footer-links {
     gap: 19px;
     flex-wrap: wrap;
   }
   .footer-bottom {
-    flex-wrap: wrap;
-    gap: 13px;
+    gap: 4px;
   }
   .page-heading {
     display: block;
@@ -4648,7 +4670,7 @@ pre.guide-example {
 .company-assistant {
   position: fixed;
   right: 24px;
-  bottom: 22px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   z-index: 60;
   width: min(410px, calc(100vw - 32px));
   font-size: 14px;
@@ -4669,7 +4691,7 @@ pre.guide-example {
 }
 .assistant-panel {
   margin-top: 10px;
-  max-height: min(74dvh, 740px);
+  max-height: min(740px, calc(100dvh - 180px));
   overflow-y: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--border, #d7dfda);
@@ -4785,7 +4807,6 @@ pre.guide-example {
 }
 @media (max-width: 600px) {
   .company-assistant {
-    bottom: 12px;
     right: 16px;
   }
   .assistant-panel {
