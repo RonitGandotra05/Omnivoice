@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 const format = (value) => Number(value || 0).toLocaleString();
+const minutes = (value) =>
+  `${(Number(value || 0) / 60).toLocaleString(undefined, { maximumFractionDigits: 1 })} min`;
 const date = (value) => (value ? new Date(value).toLocaleString() : "Never");
 async function request(path, options = {}) {
   const response = await fetch("/api/admin/" + path, {
@@ -24,6 +26,18 @@ export default function ProductAdmin() {
     [pending, setPending] = useState(""),
     [notice, setNotice] = useState(""),
     [selection, setSelection] = useState(null);
+  const [search, setSearch] = useState(""),
+    [searchInput, setSearchInput] = useState("");
+  const confirmation = useRef(null);
+  useEffect(() => {
+    if (confirmation.current) {
+      confirmation.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      confirmation.current.focus();
+    }
+  }, [selection?.id, selection?.action]);
   const busy = useRef(false);
   const load = useCallback(
     async (signal) => {
@@ -32,7 +46,10 @@ export default function ProductAdmin() {
       try {
         const [overview, users] = await Promise.all([
           request("overview", { signal }),
-          request("accounts?page=" + page, { signal }),
+          request(
+            "accounts?page=" + page + "&search=" + encodeURIComponent(search),
+            { signal },
+          ),
         ]);
         if (!signal?.aborted) {
           setData(overview);
@@ -44,7 +61,7 @@ export default function ProductAdmin() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [page],
+    [page, search],
   );
   useEffect(() => {
     const controller = new AbortController();
@@ -61,14 +78,24 @@ export default function ProductAdmin() {
       await request("accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selection.id, action: selection.action }),
+        body: JSON.stringify({
+          id: selection.id,
+          action: selection.action,
+          ...(selection.action === "set_minutes"
+            ? { minutes: Number(selection.minutes) }
+            : {}),
+        }),
       });
       setNotice(
-        selection.action === "revoke"
-          ? "All existing sessions revoked."
-          : selection.action === "suspend"
-            ? "Account suspended and sessions revoked."
-            : "Account restored. The user can sign in again.",
+        selection.action === "set_minutes"
+          ? `Daily voice allowance updated to ${selection.minutes} minutes.`
+          : selection.action === "reset_minutes"
+            ? "Consumed minutes reset. History is preserved; pending calls remain reserved until verified."
+            : selection.action === "revoke"
+              ? "All existing sessions revoked."
+              : selection.action === "suspend"
+                ? "Account suspended and sessions revoked."
+                : "Account restored. The user can sign in again.",
       );
       setSelection(null);
       await load();
@@ -210,9 +237,50 @@ export default function ProductAdmin() {
           <section className="panel">
             <h2>Account management</h2>
             <p>
-              Suspend access, restore an account or revoke its existing
-              sessions. Roles are managed through the database.
+              See each user’s voice balance, adjust their allowance, or reset
+              consumed minutes. Usage covers the rolling 24-hour window since
+              the last reset. Each call is capped at 10 minutes.
             </p>
+            <form
+              className="admin-user-search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setPage(1);
+                setSearch(searchInput.trim());
+              }}
+            >
+              <label htmlFor="admin-user-search">
+                Find a user by name or email
+              </label>
+              <div className="admin-row-actions">
+                <input
+                  id="admin-user-search"
+                  value={searchInput}
+                  maxLength={100}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Search users…"
+                />
+                <button
+                  className="button small"
+                  disabled={loading || !!pending}
+                >
+                  Search
+                </button>
+                {search && (
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearch("");
+                      setPage(1);
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </form>
             <div
               className="admin-table-wrap"
               role="region"
@@ -223,6 +291,7 @@ export default function ProductAdmin() {
                   <tr>
                     <th scope="col">Account</th>
                     <th scope="col">Status</th>
+                    <th scope="col">Voice minutes</th>
                     <th scope="col">Last sign-in</th>
                     <th scope="col">Actions</th>
                   </tr>
@@ -245,6 +314,73 @@ export default function ProductAdmin() {
                         <small>
                           {a.mfa_enabled ? "2FA enabled" : "2FA not enabled"}
                         </small>
+                      </td>
+                      <td className="admin-voice-usage">
+                        <strong>
+                          {minutes(a.voice_usage?.remaining_seconds)} available
+                        </strong>
+                        <meter
+                          min="0"
+                          max={Math.max(
+                            1,
+                            a.voice_usage?.budget_seconds || 600,
+                          )}
+                          value={Math.min(
+                            a.voice_usage?.budget_seconds || 600,
+                            (a.voice_usage?.used_seconds || 0) +
+                              (a.voice_usage?.pending_seconds || 0),
+                          )}
+                          aria-label={`Voice minutes used or reserved for ${a.name}`}
+                        />
+                        <small>
+                          {minutes(a.voice_usage?.used_seconds)} used ·{" "}
+                          {minutes(a.voice_usage?.budget_seconds || 600)}{" "}
+                          allowance
+                        </small>
+                        <small>
+                          {minutes(a.voice_usage?.pending_seconds)} pending
+                          verification
+                        </small>
+                        <small>
+                          Retained confirmed history:{" "}
+                          {minutes(a.retained_seconds)}
+                        </small>
+                        {a.voice_usage?.reset_at && (
+                          <small>Reset {date(a.voice_usage.reset_at)}</small>
+                        )}
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            className="text-link"
+                            disabled={!!pending || loading}
+                            onClick={() =>
+                              setSelection({
+                                id: a.id,
+                                email: a.email,
+                                action: "set_minutes",
+                                minutes: Math.round(
+                                  (a.voice_usage?.budget_seconds || 600) / 60,
+                                ),
+                              })
+                            }
+                          >
+                            Edit allowance
+                          </button>
+                          <button
+                            type="button"
+                            className="text-link"
+                            disabled={!!pending || loading}
+                            onClick={() =>
+                              setSelection({
+                                id: a.id,
+                                email: a.email,
+                                action: "reset_minutes",
+                              })
+                            }
+                          >
+                            Reset minutes
+                          </button>
+                        </div>
                       </td>
                       <td>{date(a.last_login_at)}</td>
                       <td>
@@ -303,22 +439,64 @@ export default function ProductAdmin() {
             </div>
             {selection && (
               <div
+                ref={confirmation}
+                tabIndex={-1}
                 className="admin-confirm panel"
                 role="region"
                 aria-label="Confirm account action"
               >
                 <p>
-                  {selection.action === "suspend"
-                    ? "Suspend access and revoke all sessions for"
-                    : selection.action === "restore"
-                      ? "Restore access for"
-                      : "Revoke all sessions for"}{" "}
+                  {selection.action === "set_minutes"
+                    ? "Edit the daily voice allowance for"
+                    : selection.action === "reset_minutes"
+                      ? "Reset consumed voice minutes for"
+                      : selection.action === "suspend"
+                        ? "Suspend access and revoke all sessions for"
+                        : selection.action === "restore"
+                          ? "Restore access for"
+                          : "Revoke all sessions for"}{" "}
                   <strong>{selection.email}</strong>?
                 </p>
+                {selection.action === "set_minutes" && (
+                  <label className="field" htmlFor="admin-allowance-minutes">
+                    Daily voice allowance (minutes)
+                    <input
+                      id="admin-allowance-minutes"
+                      type="number"
+                      min="1"
+                      max="240"
+                      step="1"
+                      value={selection.minutes}
+                      onChange={(event) =>
+                        setSelection((value) => ({
+                          ...value,
+                          minutes: event.target.value,
+                        }))
+                      }
+                    />
+                    <small>
+                      1–240 whole minutes. Changes affect the remaining balance
+                      immediately; each new call stays capped at 10 minutes.
+                    </small>
+                  </label>
+                )}
+                {selection.action === "reset_minutes" && (
+                  <p>
+                    Restore this user’s current allowance. Confirmed usage
+                    history stays visible. Pending calls remain reserved until
+                    verified, and site-wide safety limits still apply.
+                  </p>
+                )}
                 <div className="admin-row-actions">
                   <button
                     className="button copper small"
-                    disabled={!!pending}
+                    disabled={
+                      !!pending ||
+                      (selection.action === "set_minutes" &&
+                        (!Number.isInteger(Number(selection.minutes)) ||
+                          Number(selection.minutes) < 1 ||
+                          Number(selection.minutes) > 240))
+                    }
                     onClick={act}
                   >
                     {pending ? "Applying…" : "Confirm"}
@@ -379,8 +557,15 @@ export default function ProductAdmin() {
               <ul>
                 {data.audit.map((e, i) => (
                   <li key={i}>
-                    {date(e.created_at)} · {e.action} ·{" "}
-                    {e.target_email || "Removed account"}
+                    {date(e.created_at)} ·{" "}
+                    {{
+                      set_minutes: "Voice allowance updated",
+                      reset_minutes: "Voice minutes reset",
+                      suspend: "Account suspended",
+                      restore: "Account restored",
+                      revoke: "Sessions revoked",
+                    }[e.action] || e.action}{" "}
+                    · {e.target_email || "Removed account"}
                   </li>
                 ))}
               </ul>

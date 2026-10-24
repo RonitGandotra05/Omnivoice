@@ -4,6 +4,13 @@ const email = z.email().max(254);
 const clock = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/);
 export const ProfileSchema = z.object({
   company_name: text(2, 120),
+  callback_response_hours: z
+    .number()
+    .int()
+    .min(1)
+    .max(720)
+    .nullable()
+    .optional(),
   greeting: text(2, 500),
   instructions: z.string().max(2000),
   support_email: email,

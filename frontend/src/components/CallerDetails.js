@@ -24,6 +24,7 @@ export default function CallerDetails({ caller, availability }) {
           ["Callback number", caller?.phone],
           ["Email", caller?.email],
           ["Reason", caller?.reason],
+          ["Callback preference", caller?.callback_preference],
         ].map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>

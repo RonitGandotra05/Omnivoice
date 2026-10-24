@@ -1,3 +1,12 @@
+import {
+  trustedVoiceCountry,
+  regionalVoiceSelection,
+} from "./regional-voice.mjs";
+import {
+  voiceIntakeInstructions,
+  voiceFallbackInstructions,
+} from "../voice-intake.mjs";
+import { voiceConfiguration, VOICE_CONFIG_VERSION } from "./voice-config.mjs";
 import { createHash } from "node:crypto";
 import { ACCOUNT_DEMO_SECONDS } from "../demo-limits.mjs";
 import {
@@ -50,7 +59,7 @@ export const supportTool = {
   type: "client",
   name: "support_call",
   description:
-    "Save a complete snapshot of confirmed caller details with consent, check human availability, or request human support. Do not invent contact details or consent.",
+    "Save human requests immediately, then save the full confirmed contact snapshot after each new answer with consent. For callback/handoff ask permission, name, callback phone with country code, optional email, reason and callback preference one at a time; never invent details or consent. Omitted fields preserve saved values; consent=false clears contacts.",
   expects_response: true,
   response_timeout_secs: 30,
   parameters: {
@@ -120,7 +129,7 @@ function nativeTools(profile, tenant, env) {
     },
   ];
 }
-function makeAgent(profile, knowledge, owner, env, mode) {
+export function makeAgent(profile, knowledge, owner, env, mode) {
   const native = mode === "postgres" && env.NATIVE_CALLS_ENABLED === "true";
   const tools = native
     ? nativeTools(profile, env.SUPPORT_TENANT_ID, env)
@@ -204,9 +213,7 @@ function makeAgent(profile, knowledge, owner, env, mode) {
           ),
         ),
       },
-      ...(env.ELEVENLABS_VOICE_ID
-        ? { tts: { voice_id: env.ELEVENLABS_VOICE_ID } }
-        : {}),
+      tts: voiceConfiguration(env),
     },
     platform_settings: {
       auth: {
@@ -263,6 +270,7 @@ export function createStudioHandler({
   store = serverAction,
   transaction = transactServer,
   limit = rateLimit,
+  countryForRequest = trustedVoiceCountry,
 } = {}) {
   return async function handle(request, path) {
     let cookie;
@@ -804,6 +812,40 @@ export function createStudioHandler({
               "Voice session belongs to a different workspace",
               401,
             );
+          // Refresh voice/runtime instructions for existing signed browser agents too.
+          // Only the authenticated owner of this provider grant can request this patch.
+          const existingAgent = await provider(`/agents/${id(grant.agent_id)}`);
+          const existingPrompt =
+            existingAgent.conversation_config?.agent?.prompt?.prompt;
+          if (typeof existingPrompt !== "string")
+            throw new ApiError(
+              "Republish your company agent before starting a call",
+              409,
+            );
+          const regionalVoice = regionalVoiceSelection(
+            countryForRequest(env),
+            env,
+          );
+          await provider(`/agents/${id(grant.agent_id)}`, {
+            method: "PATCH",
+            body: {
+              conversation_config: {
+                tts: regionalVoice.configuration,
+                agent: {
+                  prompt: {
+                    prompt:
+                      existingPrompt.split("\n[OMNIVOICE_INTAKE_VERSION:")[0] +
+                      "\n[OMNIVOICE_INTAKE_VERSION:" +
+                      VOICE_CONFIG_VERSION +
+                      "]\n" +
+                      voiceIntakeInstructions +
+                      "\n" +
+                      voiceFallbackInstructions,
+                  },
+                },
+              },
+            },
+          });
           // Hold the balance until provider records confirm actual call duration.
           const allowance = protectedDemo
             ? await reserveDemo(
@@ -862,6 +904,8 @@ export function createStudioHandler({
             );
           return respond({
             signed_url: result.signed_url,
+            voice_label: regionalVoice.label,
+            regional_voice: regionalVoice.regional,
             max_seconds: allowance.max_seconds,
             reservation_id: allowance.reservation_id,
           });

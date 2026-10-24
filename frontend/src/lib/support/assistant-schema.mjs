@@ -5,6 +5,7 @@ import { ProfileSchema } from "./schema.mjs";
 export const fieldLabels = {
   company_information: "Company information / knowledge",
   company_name: "Company name",
+  callback_response_hours: "Callback response target (hours)",
   greeting: "Opening greeting",
   instructions: "Business context & conversation style",
   support_email: "Support email",
@@ -184,6 +185,15 @@ export function validateExtraction(raw, message, existing = {}) {
       !normalize(parsed.evidence[key]).includes(normalize(parsed.updates[key]))
     )
       throw new Error("Unsupported company value");
+  }
+  if (parsed.updates.callback_response_hours != null) {
+    const durations = [
+      ...parsed.evidence.callback_response_hours.matchAll(
+        /(\d+)\s*(hours?|hrs?|days?)\b/gi,
+      ),
+    ].map((match) => Number(match[1]) * (/days?/i.test(match[2]) ? 24 : 1));
+    if (!durations.includes(parsed.updates.callback_response_hours))
+      throw new Error("Unsupported callback response target");
   }
   if (parsed.updates.office_hours) {
     const source = parsed.evidence.office_hours.toLowerCase();

@@ -87,7 +87,23 @@ export function captureCaller(
   values,
   { preview = false, at, channel = "browser", storage = "browser" } = {},
 ) {
-  const body = parse(CallerSchema, values);
+  // Tool arguments are incremental in practice. Preserve omitted confirmed fields,
+  // but an explicit consent withdrawal must erase every previously saved contact.
+  const previous = state.callers.find(
+    (c) => c.conversation_id === values?.conversation_id,
+  );
+  if (values?.consent === false) parse(CallerSchema, values);
+  const merged = {
+    ...previous,
+    ...values,
+    action: values?.action || "capture",
+  };
+  if (values?.consent === false) {
+    merged.name = "";
+    merged.phone = "";
+    merged.email = null;
+  }
+  const body = parse(CallerSchema, merged);
   const current = availability(state.profile, at);
   if (
     body.action === "availability" &&
@@ -95,9 +111,6 @@ export function captureCaller(
     !body.callback_requested
   )
     return { availability: current };
-  const previous = state.callers.find(
-    (c) => c.conversation_id === body.conversation_id,
-  );
   const time = new Date().toISOString();
   const caller = {
     ...previous,
@@ -179,6 +192,19 @@ export function captureCaller(
       caller,
       ...state.callers.filter((c) => c.id !== caller.id),
     ].slice(0, 100);
+  }
+  if (requestedHandoff || caller.handoff) {
+    const contact = caller.consent && (caller.phone || caller.email);
+    const target = state.profile.callback_response_hours;
+    result.callback_response_hours = target || null;
+    result.follow_up_message = !contact
+      ? "Your request has been recorded. May I save your name and callback number so the team has a way to contact you?"
+      : target
+        ? `Your request and contact details have been saved. The team's response target is within ${target} hours; this is not a booked or guaranteed callback.`
+        : "Your request and contact details have been saved for follow-up. I don't have a confirmed response timeframe to promise.";
+    if (storage === "browser")
+      result.follow_up_message +=
+        " This request is saved on this browser; shared team delivery is not connected, so I cannot confirm the team was notified.";
   }
   return result;
 }

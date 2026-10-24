@@ -1,3 +1,7 @@
+import {
+  voiceIntakeInstructions,
+  voiceFallbackInstructions,
+} from "./voice-intake.mjs";
 export const initialProfile = {
   company_name: "Acme Commerce",
   greeting: "Hi, I’m Acme’s AI support assistant. How can I help today?",
@@ -101,10 +105,22 @@ export function voicePrompt(profile) {
     "On an explicit human request, your FIRST action must be support_call action=handoff with human_requested=true. Include already confirmed consented contacts in that same call. Otherwise leave contact details empty and consent=false. Never delay saving the human request to ask another intake question. Call support_call action=handoff immediately. Transfer only on a connected phone call after transfer_available. If closed or transfer fails, offer a consented callback request; do not promise a booked appointment or guaranteed callback time.",
     "Use support_call for caller intake and human requests. Never duplicate a saved handoff with another escalation. Reuse request identifiers on retries.",
     "Confirm only the actual returned ticket ID and delivery status. Never claim a refund, booking or transfer succeeded without a successful tool result.",
+    voiceIntakeInstructions,
+    voiceFallbackInstructions,
+    profile.callback_response_hours
+      ? `Configured company callback response target: ${profile.callback_response_hours} hours. Describe this as the team's target, not a guaranteed appointment. State it only for a saved callback request with consented contact details.`
+      : "No company callback response timeframe is configured. Never invent a deadline such as 24, 48 or 72 hours. Say you can record a request for the team, and ask permission to collect callback details. Unknown hours do not mean staff are open or closed.",
   ].join("\n");
 }
 
 export function profileError(profile) {
+  if (
+    profile?.callback_response_hours != null &&
+    (!Number.isInteger(profile.callback_response_hours) ||
+      profile.callback_response_hours < 1 ||
+      profile.callback_response_hours > 720)
+  )
+    return "Use a callback response target between 1 and 720 whole hours, or leave it empty.";
   if (
     !profile ||
     typeof profile.company_name !== "string" ||

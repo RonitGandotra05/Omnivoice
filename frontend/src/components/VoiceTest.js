@@ -261,8 +261,15 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
           signedUrl: data.signed_url,
           connectionType: "websocket",
           clientTools: {
-            support_call: async (values) =>
-              JSON.stringify(await runVoiceTool(values, live.current.id)),
+            support_call: async (values) => {
+              const id = live.current.id;
+              const result = await runVoiceTool(values, id);
+              if (mounted.current && live.current.id === id && result.caller) {
+                setCaller(result.caller);
+                setTrackingError("");
+              }
+              return JSON.stringify(result);
+            },
             search_company_knowledge: async (values) =>
               JSON.stringify(await searchVoiceKnowledge(values.query)),
           },

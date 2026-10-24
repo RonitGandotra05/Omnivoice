@@ -29,7 +29,7 @@ export function availability(profile, at = new Date().toISOString()) {
     transfer_configured: !!profile.human_phone,
     available: false,
   };
-  if (!profile.hours_enabled)
+  if (!profile.hours_enabled || !profile.office_hours?.length)
     return {
       ...result,
       message:

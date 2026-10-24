@@ -4813,3 +4813,12 @@ pre.guide-example {
     padding: 16px;
   }
 }
+
+.admin-user-search { margin: 20px 0; }
+.admin-user-search > label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+.admin-user-search input { min-width: 0; width: min(360px, 100%); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.admin-voice-usage { min-width: 270px; }
+.admin-voice-usage > strong, .admin-voice-usage > small { display: block; }
+.admin-voice-usage > small { margin-block: 5px; }
+.admin-voice-usage meter { display: block; width: 100%; max-width: 240px; margin: 8px 0; height: 12px; accent-color: var(--copper); }
+.admin-voice-usage .admin-row-actions { gap: 14px; margin-top: 10px; }

@@ -108,3 +108,15 @@ docs/*AUDIT*.md
 
 # Keep the company-assistant regression suite with its implementation.
 !frontend/tests/company-assistant.test.mjs
+
+!frontend/tests/voice-intake*.mjs
+
+!frontend/tests/admin-minutes*.mjs
+
+!frontend/tests/voice-fallback*.mjs
+docs/audits/voice-handoff-2026-10-24/callback-intake.json
+docs/audits/voice-handoff-2026-10-24/eric-support-sample.mp3
+docs/audits/voice-handoff-2026-10-24/fallback-scope.json
+docs/audits/voice-handoff-2026-10-24/README.md
+docs/audits/voice-handoff-2026-10-24/refused-consent.json
+docs/audits/voice-handoff-2026-10-24/river-support-sample.mp3

@@ -139,6 +139,27 @@ export default function BusinessHours({ profile, update }) {
           </label>
         </>
       )}
+      <label className="field">
+        Callback response target (hours, optional)
+        <input
+          type="number"
+          min="1"
+          max="720"
+          step="1"
+          value={profile.callback_response_hours ?? ""}
+          onChange={(event) =>
+            update(
+              "callback_response_hours",
+              event.target.value === "" ? null : Number(event.target.value),
+            )
+          }
+          placeholder="For example, 72"
+        />
+        <small>
+          Only set a timeframe your team actually supports. Without one, the
+          agent records a request without promising a response deadline.
+        </small>
+      </label>
       {!profile.hours_enabled && (
         <small>
           Hours unknown: the agent saves a follow-up request without claiming

@@ -1,3 +1,4 @@
+import { accountBudgetFilter, voiceBudgetAccount } from "./voice-allowance.mjs";
 import { createHmac, randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { databasePool } from "./support-store.mjs";
@@ -84,6 +85,8 @@ export async function setupDemoDatabase(env = process.env) {
       id UUID PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
       active BOOLEAN NOT NULL DEFAULT TRUE, extended_access BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS voice_budget_seconds INTEGER NOT NULL DEFAULT 600 CHECK(voice_budget_seconds BETWEEN 60 AND 14400);
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS voice_reset_at TIMESTAMPTZ;
     ALTER TABLE ov_demo_accounts ALTER COLUMN password_hash DROP NOT NULL;
     ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'system';
@@ -158,14 +161,19 @@ export async function demoAllowance(
   await reconcileDemoUsage(account.id, env);
   const r = await databasePool(env).query(
     `SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds, MIN(expires_at) FILTER (WHERE settled AND duration_seconds>0) AS retry_at, COALESCE(SUM(duration_seconds) FILTER (WHERE NOT settled),0)::int AS pending_seconds FROM ov_demo_sessions
-    WHERE expires_at>NOW() AND (account_id=$3 OR (account_id IS NULL AND (ip_hash=$1 OR browser_hash=$2)))`,
+    WHERE expires_at>NOW() AND ${accountBudgetFilter}`,
     [identities.ip, identities.browser, account?.id || null],
   );
-  return allowanceFromUsage(r.rows[0], account);
+  return allowanceFromUsage(
+    r.rows[0],
+    await voiceBudgetAccount(databasePool(env), account.id),
+  );
 }
 export function allowanceFromUsage(usage, account) {
   const budget =
-    account?.id && account.email_verified === true ? ACCOUNT_DEMO_SECONDS : 0;
+    account?.id && account.email_verified === true && account.active !== false
+      ? Number(account.voice_budget_seconds ?? ACCOUNT_DEMO_SECONDS)
+      : 0;
   const reserved = Number(usage?.used_seconds) || 0;
   const pending = Number(usage?.pending_seconds) || 0;
   const used = Math.max(0, reserved - pending);
@@ -215,10 +223,13 @@ export async function reserveDemo(
       );
     const active = await db.query(
       `SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds, MIN(expires_at) FILTER (WHERE settled AND duration_seconds>0) AS retry_at, COALESCE(SUM(duration_seconds) FILTER (WHERE NOT settled),0)::int AS pending_seconds FROM ov_demo_sessions WHERE expires_at>NOW()
-      AND (account_id=$3 OR (account_id IS NULL AND (ip_hash=$1 OR browser_hash=$2)))`,
+      AND ${accountBudgetFilter}`,
       [identities.ip, identities.browser, account?.id || null],
     );
-    const allowance = allowanceFromUsage(active.rows[0], account);
+    const currentAccount = await voiceBudgetAccount(db, account.id);
+    if (!currentAccount?.active)
+      throw new ApiError("Account access is unavailable.", 403);
+    const allowance = allowanceFromUsage(active.rows[0], currentAccount);
     if (!allowance.available && allowance.pending_seconds > 0)
       throw new ApiError(
         "Your last voice connection is still being verified. Unused minutes will return automatically.",
@@ -241,7 +252,7 @@ export async function reserveDemo(
         "Today’s voice demo capacity has been reached. Please try again tomorrow.",
         429,
       );
-    const duration = allowance.max_seconds;
+    const duration = Math.min(ACCOUNT_DEMO_SECONDS, allowance.max_seconds);
     const reservation = randomUUID();
     await db.query(
       "INSERT INTO ov_demo_sessions (id,ip_hash,browser_hash,account_id,duration_seconds,provider_agent_id) VALUES ($1,$2,$3,$4,$5,$6)",
@@ -277,11 +288,14 @@ export async function protectDemoOperation(
   return locked(env, async (db) => {
     // Stop spending on further publication once the free trial has been consumed.
     const used = await db.query(
-      "SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds FROM ov_demo_sessions WHERE expires_at>NOW() AND (account_id=$3 OR (account_id IS NULL AND (ip_hash=$1 OR browser_hash=$2)))",
+      `SELECT COALESCE(SUM(duration_seconds),0)::int AS used_seconds FROM ov_demo_sessions WHERE expires_at>NOW() AND ${accountBudgetFilter}`,
       [identity.ip, identity.browser, account?.id || null],
     );
     if (
-      !allowanceFromUsage(used.rows[0], account).available &&
+      !allowanceFromUsage(
+        used.rows[0],
+        account?.id ? await voiceBudgetAccount(db, account.id) : account,
+      ).available &&
       operation !== "account"
     )
       throw new ApiError(
