@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ACCOUNT_DEMO_SECONDS } from "@/lib/demo-limits.mjs";
 import {
   adminRequest,
   replaceConfirmedAccount,
@@ -840,16 +841,16 @@ function AccountRows({
           <strong>{minutes(balance.remaining_seconds)} available</strong>
           <meter
             min="0"
-            max={Math.max(1, balance.budget_seconds || 600)}
+            max={Math.max(1, balance.budget_seconds || ACCOUNT_DEMO_SECONDS)}
             value={Math.min(
-              balance.budget_seconds || 600,
+              balance.budget_seconds || ACCOUNT_DEMO_SECONDS,
               (balance.used_seconds || 0) + (balance.pending_seconds || 0),
             )}
             aria-label={`Used or reserved minutes for ${a.name}`}
           />
           <small>
             {minutes(balance.used_seconds)} used of{" "}
-            {minutes(balance.budget_seconds || 600)}
+            {minutes(balance.budget_seconds || ACCOUNT_DEMO_SECONDS)}
           </small>
           {balance.pending_seconds > 0 && (
             <small>{minutes(balance.pending_seconds)} pending</small>
@@ -866,7 +867,9 @@ function AccountRows({
                   id: a.id,
                   email: a.email,
                   action: "set_minutes",
-                  minutes: Math.round((balance.budget_seconds || 600) / 60),
+                  minutes: Math.round(
+                    (balance.budget_seconds || ACCOUNT_DEMO_SECONDS) / 60,
+                  ),
                 })
               }
             >

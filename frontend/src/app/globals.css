@@ -4913,3 +4913,14 @@ pre.guide-example {
 .admin-empty p { font-size: 12px; color: var(--muted); margin-top: 12px; }
 @media(max-width:1050px) { .admin-summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .admin-main-grid { grid-template-columns: 1fr; gap: 0; } .admin-provider-grid { grid-template-columns: 1fr; gap: 20px; } .admin-provider-grid > div { border-right: 0; padding: 0 0 20px; border-bottom: 1px solid var(--line); } .admin-provider-grid > div:last-child { border-bottom: 0; padding-bottom: 0; } }
 @media(max-width:700px) { .admin-dashboard-heading { display: block; padding-top: 24px; } .admin-refresh { justify-items: start; margin-top: 24px; } .product-admin .admin-card { padding: 20px; } .admin-card-heading { flex-wrap: wrap; gap: 14px; } .admin-summary { padding: 18px; } .admin-summary > strong { font-size: 25px; } .admin-filters { padding: 14px; } .admin-filters label { flex: 1; min-width: 130px; } .admin-profile-facts { grid-template-columns: repeat(2,minmax(0,1fr)); } .admin-pagination { justify-content: space-between; gap: 10px; } .admin-audit-list li { flex-direction: column; gap: 8px; } }
+
+.pricing-business { display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; padding: 36px; margin-top: 32px; }
+.pricing-business h2 { font-size: clamp(28px, 3vw, 40px); line-height: 1.15; margin: 16px 0; }
+.pricing-business p { font-size: 13px; line-height: 1.8; color: var(--muted); margin: 16px 0; }
+.pricing-business .pricing-business-contact { color: var(--ink); margin-top: 24px; }
+.pricing-business .button { margin-top: 8px; white-space: normal; }
+.pricing-business-budget { border-left: 1px solid var(--line); padding-left: 36px; align-self: center; }
+.pricing-business-budget > strong { display: block; font-size: clamp(27px, 3vw, 38px); letter-spacing: -1px; margin-top: 18px; }
+.pricing-business-budget > strong small { font-size: 12px; letter-spacing: 0; font-weight: 400; }
+.pricing-business-budget > small { display: block; font-size: 11px; line-height: 1.8; color: var(--muted); }
+@media(max-width: 800px) { .pricing-business { grid-template-columns: 1fr; padding: 24px; gap: 28px; } .pricing-business-budget { border-left: 0; border-top: 1px solid var(--line); padding: 24px 0 0; } }

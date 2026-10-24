@@ -57,7 +57,7 @@ export async function sendAccountLink(
         purpose === "verify"
           ? "Verify your OmniVoice email"
           : "Reset your OmniVoice password",
-      text: `${purpose === "verify" ? "Verify your email to unlock your 10-minute voice demo." : "Reset your account password."}\n\n${link.toString()}\n\nThis link expires in 30 minutes and can be used once. If you did not request it, ignore this message.`,
+      text: `${purpose === "verify" ? "Verify your email to unlock your 5-minute voice demo." : "Reset your account password."}\n\n${link.toString()}\n\nThis link expires in 30 minutes and can be used once. If you did not request it, ignore this message.`,
     });
     if (!result.accepted?.length) throw new Error("Mail not accepted");
   } catch {

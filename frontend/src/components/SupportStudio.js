@@ -492,7 +492,7 @@ export default function SupportStudio() {
           <h1>
             Your support <em>workspace.</em>
           </h1>
-          <p>Build your agent and try up to 10 minutes of voice daily.</p>
+          <p>Build your agent and try up to 5 minutes of voice daily.</p>
         </div>
         <div className="workspace-save">
           <span className={`save-state ${dirty ? "changed" : ""}`}>

@@ -125,3 +125,6 @@ docs/audits/voice-handoff-2026-10-24/river-support-sample.mp3
 !frontend/tests/start-admin-dashboard-ui.mjs
 frontend/.env.example
 frontend/.env.example
+
+# Private pricing research and commercial budget assumptions (not for commits).
+/docs/private/

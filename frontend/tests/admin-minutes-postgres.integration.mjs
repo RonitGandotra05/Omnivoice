@@ -70,15 +70,58 @@ try {
       "INSERT INTO ov_demo_accounts(id,name,email,email_verified,is_admin) VALUES($1,$2,$3,TRUE,$4)",
       [id, name, id + "@example.com", id === admin],
     );
+  // Recreate pre-change defaults and a deliberate admin-assigned ten-minute budget.
+  const legacy = randomUUID(),
+    custom = randomUUID();
+  for (const id of [legacy, custom])
+    await pool.query(
+      "INSERT INTO ov_demo_accounts(id,name,email,email_verified,voice_budget_seconds) VALUES($1,$2,$3,TRUE,600)",
+      [id, id, id + "@example.com"],
+    );
+  await pool.query(
+    "INSERT INTO ov_admin_events(actor,target,action,details) VALUES($1,$2,'set_minutes','{}')",
+    [admin, custom],
+  );
+  await pool.query(
+    "DELETE FROM ov_demo_migrations WHERE name='free-five-minutes-v1'",
+  );
+  resetDemoDatabaseForTests();
+  await setupDemoDatabase(env);
+  const migrated = (
+    await pool.query(
+      "SELECT id,voice_budget_seconds FROM ov_demo_accounts WHERE id=ANY($1::uuid[])",
+      [[legacy, custom]],
+    )
+  ).rows;
+  assert.equal(migrated.find((a) => a.id === legacy).voice_budget_seconds, 300);
+  assert.equal(migrated.find((a) => a.id === custom).voice_budget_seconds, 600);
+  await pool.query(
+    "UPDATE ov_demo_accounts SET voice_budget_seconds=600 WHERE id=$1",
+    [legacy],
+  );
+  resetDemoDatabaseForTests();
+  await setupDemoDatabase(env);
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT voice_budget_seconds FROM ov_demo_accounts WHERE id=$1",
+        [legacy],
+      )
+    ).rows[0].voice_budget_seconds,
+    600,
+  );
+  console.log(
+    "PASS: one-time default migration changes legacy free budgets, preserves explicit admin allowances and does not repeat",
+  );
   const original = await demoAllowance(req, "browser-a", env, member);
-  assert.equal(original.max_seconds, 600);
+  assert.equal(original.max_seconds, 300);
   await pool.query(
     "INSERT INTO ov_demo_sessions(id,account_id,ip_hash,browser_hash,duration_seconds,settled,created_at) VALUES($1,$2,'ip','browser',480,TRUE,clock_timestamp()-INTERVAL '1 hour')",
     [randomUUID(), user],
   );
   assert.equal(
     (await demoAllowance(req, "browser-b", env, member)).max_seconds,
-    120,
+    0,
   );
   await action({ action: "set_minutes", minutes: 30 });
   const increased = await demoAllowance(req, "browser-b", env, member);
@@ -86,7 +129,7 @@ try {
   assert.equal(increased.used_seconds, 480);
   assert.equal(increased.max_seconds, 1320);
   console.log(
-    "PASS: existing users default to 10 minutes; increasing allowance preserves usage and is enforced server-side",
+    "PASS: free users default to 5 minutes; increasing allowance preserves usage and is enforced server-side",
   );
   const reservation = await reserveDemo(
     req,

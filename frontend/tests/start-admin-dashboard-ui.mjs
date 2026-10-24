@@ -66,7 +66,7 @@ for (const [id, name, email, isAdmin] of [
 ]) {
   const row = (
     await pool.query(
-      "INSERT INTO ov_demo_accounts(id,name,email,email_verified,is_admin) VALUES($1,$2,$3,TRUE,$4) RETURNING *",
+      "INSERT INTO ov_demo_accounts(id,name,email,email_verified,is_admin,voice_budget_seconds) VALUES($1,$2,$3,TRUE,$4,600) RETURNING *",
       [id, name, email, isAdmin],
     )
   ).rows[0];

@@ -3,7 +3,10 @@ import { createHmac, randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { databasePool } from "./support-store.mjs";
 import { providerRequest, ApiError } from "./provider.mjs";
-import { ACCOUNT_DEMO_SECONDS } from "../demo-limits.mjs";
+import {
+  ACCOUNT_DEMO_SECONDS,
+  MAX_DEMO_CALL_SECONDS,
+} from "../demo-limits.mjs";
 
 export function protectionEnabled(env = process.env) {
   return (
@@ -68,6 +71,7 @@ export async function setupDemoDatabase(env = process.env) {
   ready ||= databasePool(env)
     .query(
       `
+    SELECT pg_advisory_xact_lock(hashtext('omnivoice-demo-budget-v1'));
     CREATE TABLE IF NOT EXISTS ov_demo_sessions (
       id UUID PRIMARY KEY, ip_hash TEXT NOT NULL, browser_hash TEXT NOT NULL,
       account_id UUID, duration_seconds INTEGER NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -85,8 +89,22 @@ export async function setupDemoDatabase(env = process.env) {
       id UUID PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
       active BOOLEAN NOT NULL DEFAULT TRUE, extended_access BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
-    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS voice_budget_seconds INTEGER NOT NULL DEFAULT 600 CHECK(voice_budget_seconds BETWEEN 60 AND 14400);
+    ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS voice_budget_seconds INTEGER NOT NULL DEFAULT ${ACCOUNT_DEMO_SECONDS} CHECK(voice_budget_seconds BETWEEN 60 AND 14400);
     ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS voice_reset_at TIMESTAMPTZ;
+    ALTER TABLE ov_demo_accounts ALTER COLUMN voice_budget_seconds SET DEFAULT ${ACCOUNT_DEMO_SECONDS};
+    CREATE TABLE IF NOT EXISTS ov_demo_migrations(name TEXT PRIMARY KEY);
+    DO $free_default$ BEGIN
+      INSERT INTO ov_demo_migrations(name) VALUES('free-five-minutes-v1') ON CONFLICT DO NOTHING;
+      IF FOUND THEN
+        IF to_regclass('ov_admin_events') IS NOT NULL THEN
+          UPDATE ov_demo_accounts a SET voice_budget_seconds=${ACCOUNT_DEMO_SECONDS}
+          WHERE a.voice_budget_seconds=600 AND NOT EXISTS (
+            SELECT 1 FROM ov_admin_events e WHERE e.target=a.id AND e.action='set_minutes');
+        ELSE
+          UPDATE ov_demo_accounts SET voice_budget_seconds=${ACCOUNT_DEMO_SECONDS} WHERE voice_budget_seconds=600;
+        END IF;
+      END IF;
+    END $free_default$;
     ALTER TABLE ov_demo_accounts ALTER COLUMN password_hash DROP NOT NULL;
     ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
     ALTER TABLE ov_demo_accounts ADD COLUMN IF NOT EXISTS theme TEXT NOT NULL DEFAULT 'system';
@@ -252,7 +270,7 @@ export async function reserveDemo(
         "Today’s voice demo capacity has been reached. Please try again tomorrow.",
         429,
       );
-    const duration = Math.min(ACCOUNT_DEMO_SECONDS, allowance.max_seconds);
+    const duration = Math.min(MAX_DEMO_CALL_SECONDS, allowance.max_seconds);
     const reservation = randomUUID();
     await db.query(
       "INSERT INTO ov_demo_sessions (id,ip_hash,browser_hash,account_id,duration_seconds,provider_agent_id) VALUES ($1,$2,$3,$4,$5,$6)",

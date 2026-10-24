@@ -226,8 +226,8 @@ export default function AccountSettings() {
               />
               <p>
                 {account.email_verified
-                  ? "Up to 10 minutes every 24 hours."
-                  : "Verify your email for up to 10 minutes every 24 hours."}{" "}
+                  ? "Up to 5 minutes every 24 hours."
+                  : "Verify your email for up to 5 minutes every 24 hours."}{" "}
                 Only actual conversation time is charged. Unused time returns
                 after the call is verified.
               </p>

@@ -55,7 +55,7 @@ export default function AccountTokenPage({ purpose }) {
           <>
             <p role="status">
               {purpose === "verify"
-                ? "Your email is verified. Your 10-minute demo allowance is ready, subject to daily usage."
+                ? "Your email is verified. Your 5-minute demo allowance is ready, subject to daily usage."
                 : "Your password has been reset. Sign in with your new password."}
             </p>
             <Link

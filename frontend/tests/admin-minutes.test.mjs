@@ -128,3 +128,15 @@ test("canonical verified database-admin policy protects all minute operations", 
     assert.equal(r.status, 401);
   }
 });
+
+test("free default is five minutes while the separate maximum call length stays ten", async () => {
+  const { ACCOUNT_DEMO_SECONDS, MAX_DEMO_CALL_SECONDS } =
+    await import("../src/lib/demo-limits.mjs");
+  assert.equal(ACCOUNT_DEMO_SECONDS, 300);
+  assert.equal(MAX_DEMO_CALL_SECONDS, 600);
+  assert.equal(
+    allowanceFromUsage({}, { id: randomUUID(), email_verified: true })
+      .max_seconds,
+    300,
+  );
+});

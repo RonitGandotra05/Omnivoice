@@ -78,7 +78,7 @@ export default function Guide() {
           <h2>Hear your agent in action.</h2>
           <p>
             Sign in with a verified account for up to{" "}
-            <strong>10 minutes daily</strong>.
+            <strong>5 minutes daily</strong>.
           </p>
           <p>
             In the studio, open <strong>Test conversation</strong>, select play,

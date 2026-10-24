@@ -384,7 +384,7 @@ function VoiceSession({ enabled, unavailableReason, companyName, onPrepare }) {
             ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")} remaining · Select the phone to end`
             : allowance?.available
               ? `${Math.floor(allowance.max_seconds / 60)}:${String(allowance.max_seconds % 60).padStart(2, "0")} left today · Microphone required`
-              : "Microphone required · Up to 10 minutes daily"}
+              : "Microphone required · Up to 5 minutes daily"}
         </span>
       </div>
       {(starting || conversation.status === "connecting") && (
