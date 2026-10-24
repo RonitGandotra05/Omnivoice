@@ -1,18 +1,31 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/ui/Icon";
 import { useAccount } from "@/components/AccountPreferences";
 export default function Navbar() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
   const { account, setTheme } = useAccount();
   const links = [
     ["Overview", "/"],
     ["Agent studio", "/try-for-free"],
     ["Guide", "/docs"],
     ["Pricing", "/pricing"],
+    ...(account?.is_admin ? [["Admin", "/admin/dashboard"]] : []),
   ];
   return (
     <header className="site-header">
@@ -84,6 +97,7 @@ export default function Navbar() {
           <button
             type="button"
             className="menu-toggle"
+            ref={menuButton}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-navigation"

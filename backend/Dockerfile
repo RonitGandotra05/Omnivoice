@@ -4,7 +4,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends bubblewrap tess
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home --uid 10001 appuser
+RUN python -m pip install --no-cache-dir --upgrade "pip>=26.2.0" "setuptools>=84.1.0" \
+    && python -m pip install --no-cache-dir -r requirements.txt \
+    && useradd --create-home --uid 10001 appuser
 COPY backend/app /app/app
 USER appuser
 EXPOSE 8000

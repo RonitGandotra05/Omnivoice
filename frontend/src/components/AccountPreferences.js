@@ -80,6 +80,21 @@ export function AccountPreferences({ children }) {
     });
   }, [refresh, setTheme]);
   useEffect(() => {
+    const sync = () => {
+      if (document.visibilityState === "visible")
+        refresh({ preserveTheme: true });
+    };
+    const accountChange = (event) => {
+      if (event.key === "ov-account-change") sync();
+    };
+    window.addEventListener("focus", sync);
+    window.addEventListener("storage", accountChange);
+    return () => {
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("storage", accountChange);
+    };
+  }, [refresh]);
+  useEffect(() => {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const change = () => {
       if (theme === "system")
@@ -108,6 +123,9 @@ export function AccountPreferences({ children }) {
     );
     if (!response.ok) throw Error("Could not sign out. Please try again.");
     requestVersion.current++;
+    try {
+      localStorage.setItem("ov-account-change", String(Date.now()));
+    } catch {}
     setData((current) => ({ ...current, account: null, allowance: null }));
   }
   return (

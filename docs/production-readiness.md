@@ -1,3 +1,5 @@
+> **Latest active-app review (24 October 2026):** see [implemented improvements and verification](engineering-review-2026-10-24.md). The older backend-specific evidence below must not be read as current Next.js or deployment verification.
+
 > **Current default:** the studio uses Next.js routes, local browser parsing and IndexedDB. See [the Next.js guide](nextjs-migration.md). Python scanner/container instructions below describe the retained alternative backend, not the active browser mode.
 
 # Production readiness: scope, controls, and remaining gates

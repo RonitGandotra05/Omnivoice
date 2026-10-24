@@ -14,7 +14,7 @@ const messages = {
     "Google sign-in is unavailable right now. Please try again later.",
 };
 export default function AccountPage() {
-  const { account, providers, loading, refresh } = useAccount();
+  const { account, providers, loading, loadError, refresh } = useAccount();
   const router = useRouter();
   const [mfa, setMfa] = useState(false),
     [busy, setBusy] = useState(false),
@@ -28,11 +28,19 @@ export default function AccountPage() {
           "Sign-in was not completed. Please try again.",
       );
   }, []);
+  function destination() {
+    const value = new URL(window.location.href).searchParams.get("callbackUrl");
+    return value?.startsWith("/") &&
+      !value.startsWith("//") &&
+      !value.includes("\\")
+      ? value
+      : "/try-for-free";
+  }
   async function google() {
     setBusy(true);
     setError("");
     try {
-      await signIn("google", { callbackUrl: "/try-for-free" });
+      await signIn("google", { callbackUrl: destination() });
     } catch {
       setError("Google sign-in could not be started. Please try again.");
       setBusy(false);
@@ -64,13 +72,25 @@ export default function AccountPage() {
         </p>
       </section>
       <section className="panel account-form" aria-label="Your account">
+        {loadError && (
+          <p className="error-banner" role="alert">
+            {loadError}{" "}
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => refresh()}
+            >
+              Retry
+            </button>
+          </p>
+        )}
         {loading ? (
           <p role="status">Loading your account…</p>
         ) : mfa ? (
           <MfaVerify
             onSuccess={async () => {
               await refresh();
-              router.push("/try-for-free");
+              router.push(destination());
             }}
             onCancel={() => {
               setMfa(false);

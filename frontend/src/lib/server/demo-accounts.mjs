@@ -193,14 +193,27 @@ export async function handleDemoAccount(
     if (action === "session" && request.method === "GET") {
       const account = await demoAccount(request, env);
       const session = account ? browserOwner(request, env) : null;
+      // Voice availability must not take down identity, settings or navigation.
+      // Voice issuance still independently fails closed.
+      let allowance = null;
+      if (account) {
+        try {
+          allowance = await demoAllowance(request, session.owner, env, account);
+        } catch {
+          allowance = {
+            available: false,
+            max_seconds: 0,
+            error:
+              "Voice availability could not be verified. Please try again shortly.",
+          };
+        }
+      }
       return reply(
         {
           account,
           providers: accountProviders(env),
           email_available: accountMailEnabled(env),
-          allowance: account
-            ? await demoAllowance(request, session.owner, env, account)
-            : null,
+          allowance,
         },
         200,
         session?.cookie ? [session.cookie] : [],

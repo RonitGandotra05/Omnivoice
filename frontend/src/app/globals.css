@@ -4625,3 +4625,21 @@ pre.guide-example {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* Administration shares the studio's typography, surfaces and controls. */
+.product-admin > .panel, .product-admin > .stats-grid, .admin-two-column { margin-block: 24px; }
+.admin-chart { display: flex; gap: 8px; align-items: flex-end; min-height: 180px; overflow-x: auto; padding-block: 12px; }
+.admin-chart-column { flex: 1; min-width: 34px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; }
+.admin-chart-bar { width: 100%; max-width: 44px; background: var(--copper, #a65f42); border-radius: 4px 4px 0 0; }
+.admin-integrations { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
+.admin-integrations dt { text-transform: capitalize; font-weight: 600; }
+.admin-integrations dd { margin: 6px 0; }
+.admin-table-wrap { overflow-x: auto; margin-block: 24px; }
+.admin-table { width: 100%; border-collapse: collapse; text-align: left; }
+.admin-table th,.admin-table td { padding: 16px 12px; border-bottom: 1px solid var(--line, #aaa5); vertical-align: top; }
+.admin-table td:first-child { overflow-wrap: anywhere; min-width: 180px; }
+.admin-row-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.admin-two-column { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.admin-two-column li,.product-admin > .panel li { margin-block: 10px; overflow-wrap: anywhere; }
+.admin-confirm { margin-top: 20px; }
+@media(max-width:700px) { .admin-two-column { grid-template-columns: 1fr; } .admin-integrations { grid-template-columns: repeat(2,minmax(0,1fr)); } }

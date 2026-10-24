@@ -17,6 +17,16 @@ export async function middleware(request) {
       );
     }
   }
+  // Google-account administration is authorized in Node against the current
+  // database identity. The page and each API handler enforce this independently.
+  if (
+    ["/admin/dashboard", "/api/admin/overview", "/api/admin/accounts"].some(
+      (path) =>
+        request.nextUrl.pathname === path ||
+        request.nextUrl.pathname.startsWith(path + "/"),
+    )
+  )
+    return NextResponse.next();
   // Middleware checks the signed claim using Web Crypto only. Every admin API
   // independently verifies current database role/revocation in its Node handler.
   const token = request.cookies.get("auth_token")?.value;

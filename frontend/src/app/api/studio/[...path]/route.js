@@ -1,5 +1,7 @@
 import { createStudioHandler } from "@/lib/server/studio-handler.mjs";
 import { timingSafeEqual } from "node:crypto";
+import { demoAccount } from "@/lib/server/demo-accounts.mjs";
+import { isProductAdmin } from "@/lib/server/admin-policy.mjs";
 import { verifyAdminSession } from "@/lib/admin-session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +16,7 @@ const handler = createStudioHandler({
         b = Buffer.from(provided);
       if (a.length === b.length && timingSafeEqual(a, b)) return true;
     }
+    if (isProductAdmin(await demoAccount(request))) return true;
     return !!(
       await verifyAdminSession(request.cookies.get("auth_token")?.value || "")
     )?.isAdmin;

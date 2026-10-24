@@ -1,3 +1,4 @@
+import { ADMIN_EMAIL } from "./admin-policy.mjs";
 import { SignJWT, jwtVerify } from "jose";
 import { assertDatabaseManagedRoles } from "./account-role-policy.mjs";
 import { databasePool, rateLimit } from "./support-store.mjs";
@@ -88,7 +89,7 @@ export async function operatorSession(request, env = process.env) {
       [claims.id],
     )
   ).rows[0];
-  if (!row) return null;
+  if (!row || row.email?.toLowerCase() !== ADMIN_EMAIL) return null;
   const state = await mfaStatus("operator:" + row.id, env);
   if (
     (claims.authVersion || 0) !== state.version ||
@@ -157,7 +158,13 @@ export async function handleOperatorLogin(request, env = process.env) {
         )
       ).rows[0];
       const valid = await verifyPassword(body.password, row?.password);
-      if (!row || row.is_active !== true || row.is_admin !== true || !valid)
+      if (
+        !row ||
+        row.email?.toLowerCase() !== ADMIN_EMAIL ||
+        row.is_active !== true ||
+        row.is_admin !== true ||
+        !valid
+      )
         throw new ApiError("Invalid email or password.", 401);
       const state = await mfaStatus("operator:" + row.id, env);
       if (state.enabled)

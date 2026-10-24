@@ -41,6 +41,8 @@ function json(body, method = "POST") {
 
 export default function SupportStudio() {
   const [section, setSection] = useState("setup");
+  const [loadState, setLoadState] = useState("loading");
+  const [bootAttempt, setBootAttempt] = useState(0);
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("view") === "voice")
       setSection("test");
@@ -89,14 +91,17 @@ export default function SupportStudio() {
     const observer = new ResizeObserver(revealActive);
     observer.observe(nav);
     return () => observer.disconnect();
-  }, [section]);
+  }, [section, loadState]);
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    setLoadState("loading");
+    setError("");
     (async () => {
-      const status = await api("status");
+      const status = await api("status", { signal: controller.signal });
       if (!active) return;
       setStatus(status);
-      const data = await api("workspace");
+      const data = await api("workspace", { signal: controller.signal });
       if (!active) return;
       setProfile(data.profile);
       setDocuments(data.documents);
@@ -105,14 +110,19 @@ export default function SupportStudio() {
       setCallers(data.callers || []);
       setConnected(true);
       setDirty(false);
+      setLoadState("ready");
     })().catch((error) => {
-      if (active) setError(error.message);
+      if (active) {
+        setError(error.message);
+        setLoadState("error");
+      }
     });
     return () => {
       active = false;
+      controller.abort();
       uploadController.current?.abort();
     };
-  }, []);
+  }, [bootAttempt]);
   useEffect(() => {
     if (!connected) return;
     const controller = new AbortController();
@@ -421,6 +431,34 @@ export default function SupportStudio() {
         `Email status: ${data.ticket.delivery_status.replaceAll("_", " ")}.`,
       );
     });
+  if (loadState !== "ready")
+    return (
+      <div className="page-shell guide-page">
+        <section className="panel" aria-busy={loadState === "loading"}>
+          <h1>Your support workspace.</h1>
+          {loadState === "loading" ? (
+            <p role="status">Loading your saved workspace…</p>
+          ) : (
+            <>
+              <p className="error-banner" role="alert">
+                {error || "Your workspace could not be loaded."}
+              </p>
+              <p>
+                Your saved workspace has not been replaced. Retry loading before
+                making changes.
+              </p>
+              <button
+                type="button"
+                className="button copper"
+                onClick={() => setBootAttempt((value) => value + 1)}
+              >
+                Retry loading workspace
+              </button>
+            </>
+          )}
+        </section>
+      </div>
+    );
   return (
     <div className="page-shell support-workspace">
       <div className="page-kicker">

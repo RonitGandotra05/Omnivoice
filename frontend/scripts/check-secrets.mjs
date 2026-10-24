@@ -1,4 +1,4 @@
-// Inspect Git blobs and browser assets without printing credential values.
+// Inspect staged blobs, current source and browser assets without printing credentials.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +39,19 @@ for (const file of files) {
     }),
   );
 }
+const workingFiles = execFileSync(
+  "git",
+  ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+  { cwd: root },
+)
+  .toString()
+  .split("\0")
+  .filter(Boolean);
+for (const file of new Set(workingFiles)) {
+  const full = path.join(root, file);
+  if (fs.existsSync(full) && fs.lstatSync(full).isFile())
+    inspect("worktree:" + file, fs.readFileSync(full));
+}
 function walk(dir) {
   if (!fs.existsSync(dir)) return;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -53,5 +66,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else
   console.log(
-    `Secret check passed: ${files.length} Git files and available browser assets. Values were not printed.`,
+    `Secret check passed: ${files.length} index files, ${new Set(workingFiles).size} working files and available browser assets. Values were not printed.`,
   );

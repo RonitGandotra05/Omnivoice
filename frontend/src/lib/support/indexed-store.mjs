@@ -32,10 +32,10 @@ export function openWorkspaceDB() {
     };
   }));
 }
-export async function transactWorkspace(operation) {
+export async function transactWorkspace(operation, mode = "readwrite") {
   const db = await openWorkspaceDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction("workspace", "readwrite");
+    const tx = db.transaction("workspace", mode);
     const store = tx.objectStore("workspace");
     const get = store.get("current");
     let result;
@@ -56,8 +56,10 @@ export async function transactWorkspace(operation) {
         result = operation(state);
         if (result?.then)
           throw new Error("IndexedDB operations must be synchronous");
-        state.revision = (state.revision || 0) + 1;
-        store.put(state, "current");
+        if (mode === "readwrite") {
+          state.revision = (state.revision || 0) + 1;
+          store.put(state, "current");
+        }
       } catch (e) {
         failure = e;
         tx.abort();
@@ -75,13 +77,16 @@ export async function transactWorkspace(operation) {
     tx.onerror = () => {};
   });
 }
-export const readWorkspace = () => transactWorkspace((s) => structuredClone(s));
+export const readWorkspace = () =>
+  transactWorkspace((s) => structuredClone(s), "readonly");
 export const localAction = (path, method, body) =>
-  transactWorkspace((s) =>
-    workspaceAction(s, path, method, body, {
-      storage: "browser",
-      channel: "browser",
-    }),
+  transactWorkspace(
+    (s) =>
+      workspaceAction(s, path, method, body, {
+        storage: "browser",
+        channel: "browser",
+      }),
+    method === "GET" ? "readonly" : "readwrite",
   );
 export const updateWorkspace = (fn) =>
   transactWorkspace((s) => {

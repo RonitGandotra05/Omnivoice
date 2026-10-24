@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useAccount } from "@/components/AccountPreferences";
 import SupportStudio from "@/components/SupportStudio";
 export default function StudioAccess() {
-  const { account, loading, loadError } = useAccount();
+  const { account, loading, loadError, refresh } = useAccount();
   if (loading)
     return (
       <div className="page-shell guide-page">
@@ -22,7 +22,14 @@ export default function StudioAccess() {
         <p>Sign in with a verified account for up to 10 free minutes daily.</p>
         {loadError && (
           <p role="alert" className="error-banner">
-            {loadError}
+            {loadError}{" "}
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => refresh()}
+            >
+              Retry
+            </button>
           </p>
         )}
         <Link

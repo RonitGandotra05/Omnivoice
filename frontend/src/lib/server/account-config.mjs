@@ -1,3 +1,4 @@
+import { isProductAdmin } from "./admin-policy.mjs";
 import { normalizeEmail } from "./auth-email.mjs";
 import { validNewPassword } from "./auth-password.mjs";
 export function accountProviders(env = process.env) {
@@ -24,6 +25,7 @@ export function accountView(row) {
   if (!row) return null;
   return {
     id: row.id,
+    is_admin: isProductAdmin(row),
     name: row.name,
     email: row.email,
     email_verified: row.email_verified === true,
