@@ -118,3 +118,7 @@ The Python code remains available in `backend/`. Nothing in the current studio r
 **Proprietary · All rights reserved.** OmniVoice's original code, design and assets belong to Ronit Gandotra. Use, copying, modification, redistribution, hosting or commercial exploitation requires prior written permission. See [LICENSE](LICENSE). Request permission through [GitHub](https://github.com/RonitGandotra05) or [LinkedIn](https://www.linkedin.com/in/ronitgandotra).
 
 Third-party components remain subject to their respective licenses and notices.
+
+### Company-information assistant
+
+The company workspace includes a compact Gemini assistant for extracting and reviewing existing profile fields. It uses authenticated server-side extraction, explicit replacement review, shared PostgreSQL usage protection, and the existing form/save path. See [setup, security boundaries, and testing](docs/COMPANY_ASSISTANT.md).

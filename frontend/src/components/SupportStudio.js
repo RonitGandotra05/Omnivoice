@@ -4,6 +4,7 @@ import Link from "next/link";
 import { studioRequest } from "@/lib/support/studio-client.mjs";
 import { prepareVoiceWorkspace } from "@/lib/prepare-voice.mjs";
 import { saveTextKnowledge } from "@/lib/text-knowledge.mjs";
+import CompanyAssistant from "@/components/CompanyAssistant";
 import BusinessHours from "@/components/BusinessHours";
 import CallerJourney from "@/components/CallerJourney";
 import CallTranscript from "@/components/CallTranscript";
@@ -622,14 +623,17 @@ export default function SupportStudio() {
                   />
                 </label>
                 <label className="field">
-                  Tone & conversation style
+                  Business context & conversation style
                   <textarea
                     rows={3}
                     maxLength={2000}
                     value={profile.instructions}
                     onChange={(e) => update("instructions", e.target.value)}
                   />
-                  <small>How your agent should speak to customers.</small>
+                  <small>
+                    Describe your business and how your agent should speak to
+                    customers.
+                  </small>
                 </label>
                 <BusinessHours profile={profile} update={update} />
               </section>
@@ -1479,6 +1483,16 @@ export default function SupportStudio() {
           </fieldset>
         </section>
       </div>
+      <CompanyAssistant
+        profile={profile}
+        disabled={!!busy}
+        onApply={(next) => {
+          setProfile(next);
+          setDirty(true);
+          setNotice("Review your company details, then save your changes.");
+          setMessages([]);
+        }}
+      />
       <div className="workspace-footnote">
         <span>KNOWLEDGE → CONVERSATION → HUMAN FOLLOW-UP</span>
         <span>BUILT TO FIT YOUR BUSINESS ↗</span>

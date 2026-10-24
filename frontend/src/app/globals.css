@@ -4643,3 +4643,152 @@ pre.guide-example {
 .admin-two-column li,.product-admin > .panel li { margin-block: 10px; overflow-wrap: anywhere; }
 .admin-confirm { margin-top: 20px; }
 @media(max-width:700px) { .admin-two-column { grid-template-columns: 1fr; } .admin-integrations { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* Compact company assistant; stays mounted while the existing form is edited. */
+.company-assistant {
+  position: fixed;
+  right: 24px;
+  bottom: 22px;
+  z-index: 60;
+  width: min(410px, calc(100vw - 32px));
+  font-size: 14px;
+}
+.assistant-launch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-left: auto;
+  border: 1px solid var(--border, #d7dfda);
+  border-radius: 24px;
+  padding: 12px 18px;
+  background: var(--foreground, #183e31);
+  color: var(--background, #fff);
+  box-shadow: 0 5px 25px #0002;
+  cursor: pointer;
+}
+.assistant-panel {
+  margin-top: 10px;
+  max-height: min(74dvh, 740px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border, #d7dfda);
+  border-radius: 20px;
+  background: var(--background, #fff);
+  color: var(--foreground, #173c30);
+  box-shadow: 0 12px 48px #0003;
+  padding: 20px;
+}
+.assistant-intro > strong {
+  font-size: 19px;
+  letter-spacing: -0.4px;
+}
+.assistant-panel p {
+  margin: 8px 0 12px;
+  line-height: 1.55;
+}
+.assistant-panel small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+.assistant-history p {
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-history p strong {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.assistant-history .from-user {
+  margin-left: 20px;
+}
+.assistant-proposal {
+  margin: 14px 0;
+  padding-top: 12px;
+  border-top: 1px solid #8884;
+}
+.assistant-change {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid #8883;
+}
+.assistant-change > span {
+  min-width: 0;
+  flex: 1;
+}
+.assistant-change input {
+  margin-top: 4px;
+  accent-color: #307354;
+}
+.assistant-change pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 12px;
+  margin: 7px 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.assistant-panel form {
+  margin-top: 16px;
+}
+.assistant-panel form label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.assistant-panel textarea {
+  width: 100%;
+  resize: vertical;
+  max-height: 200px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #8886;
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+.assistant-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 8px;
+}
+.assistant-actions button {
+  border: 1px solid #8886;
+  border-radius: 20px;
+  padding: 8px 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.assistant-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.assistant-error {
+  border: 1px solid #be746b;
+  padding: 10px;
+  border-radius: 10px;
+}
+@media (max-width: 600px) {
+  .company-assistant {
+    bottom: 12px;
+    right: 16px;
+  }
+  .assistant-panel {
+    padding: 16px;
+  }
+}

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@elevenlabs/react": "^1.18.0",
+    "@google/genai": "^2.31.0",
     "@heroicons/react": "^2.2.0",
     "@js-temporal/polyfill": "^0.5.1",
     "@tesseract.js-data/eng": "^1.0.0",

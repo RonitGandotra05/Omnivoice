@@ -73,7 +73,9 @@ frontend/public/vendor/
 # Local hosting state and verification suites (not committed)
 .netlify/
 frontend/.netlify/
-frontend/tests/
+frontend/tests/*
+!frontend/tests/company-assistant*.mjs
+!frontend/tests/start-assistant-ui.mjs
 backend/tests/
 docs/test-fixtures/
 
@@ -103,3 +105,6 @@ docs/visual-assets.md
 docs/verification*.md
 docs/*audit*.md
 docs/*AUDIT*.md
+
+# Keep the company-assistant regression suite with its implementation.
+!frontend/tests/company-assistant.test.mjs

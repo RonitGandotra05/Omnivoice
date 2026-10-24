@@ -12,17 +12,30 @@ export function sameOrigin(request, env = process.env) {
   }
 }
 
-export async function boundedBody(request, maximum = 24 * 1024 * 1024) {
+export async function boundedBody(
+  request,
+  maximum = 24 * 1024 * 1024,
+  { timeoutMs = 0 } = {},
+) {
   const declared = Number(request.headers.get("content-length") || 0);
   if (!Number.isFinite(declared) || declared < 0 || declared > maximum)
     throw new Error("Request too large");
   if (!request.body) return undefined;
   const reader = request.body.getReader();
+  let timedOut = false;
+  const timer =
+    timeoutMs > 0
+      ? setTimeout(() => {
+          timedOut = true;
+          reader.cancel().catch(() => {});
+        }, timeoutMs)
+      : null;
   const chunks = [];
   let size = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
+      if (timedOut) throw new Error("Request timed out");
       if (done) break;
       size += value.byteLength;
       if (size > maximum) {
@@ -32,6 +45,7 @@ export async function boundedBody(request, maximum = 24 * 1024 * 1024) {
       chunks.push(value);
     }
   } finally {
+    if (timer) clearTimeout(timer);
     reader.releaseLock();
   }
   const result = new Uint8Array(size);

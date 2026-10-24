@@ -6,9 +6,13 @@ import { execFileSync } from "node:child_process";
 import dotenv from "dotenv";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const local = path.join(root, "frontend/.env.local");
-const env = fs.existsSync(local)
-  ? dotenv.parse(fs.readFileSync(local))
-  : process.env;
+const env = {
+  ...process.env,
+  ...(fs.existsSync(path.join(root, ".env"))
+    ? dotenv.parse(fs.readFileSync(path.join(root, ".env")))
+    : {}),
+  ...(fs.existsSync(local) ? dotenv.parse(fs.readFileSync(local)) : {}),
+};
 const values = Object.entries(env)
   .filter(
     ([k, v]) =>
@@ -18,7 +22,7 @@ const values = Object.entries(env)
   )
   .map(([, v]) => v);
 const suspicious =
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bsk_[a-zA-Z0-9]{28,}|postgres(?:ql)?:\/\/[^\s:'"/]+:[^\s@'"]+@[^\s'"<>]+/;
+  /AIza[\w-]{30,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bsk_[a-zA-Z0-9]{28,}|postgres(?:ql)?:\/\/[^\s:'"/]+:[^\s@'"]+@[^\s'"<>]+/;
 const failures = [];
 const inspect = (name, bytes) => {
   const text = bytes.toString();
